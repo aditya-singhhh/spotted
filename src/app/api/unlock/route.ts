@@ -30,20 +30,21 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await ensureProfile(uid, { phone: decoded.phone_number, email: decoded.email });
+    const roRef = adminDb.collection('rentalOpportunities').doc(rentalOpportunityId);
 
-  const roRef = adminDb.collection('rentalOpportunities').doc(rentalOpportunityId);
-  const roSnap = await roRef.get();
-  if (!roSnap.exists) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
-  const opportunity = roSnap.data()!;
-  const settingsSnap = await adminDb.collection('platformSettings').doc('marketplace').get();
-  const unlockPrice = Number(settingsSnap.data()?.unlockPrice ?? 29);
+    // These reads are independent — run them together instead of one-by-one to
+    // cut the unlock round-trip time (the source of the click→reveal lag).
+    const [, roSnap, settingsSnap, alreadyUnlocked, contactSnap] = await Promise.all([
+      ensureProfile(uid, { phone: decoded.phone_number, email: decoded.email }),
+      roRef.get(),
+      adminDb.collection('platformSettings').doc('marketplace').get(),
+      adminDb.collection('unlockTransactions').where('rentalOpportunityId', '==', rentalOpportunityId).where('seekerId', '==', uid).where('paymentStatus', '==', 'success').limit(1).get(),
+      roRef.collection('private').doc('contact').get()
+    ]);
 
-  const alreadyUnlocked = await adminDb.collection('unlockTransactions')
-    .where('rentalOpportunityId', '==', rentalOpportunityId)
-    .where('seekerId', '==', uid)
-    .where('paymentStatus', '==', 'success')
-    .limit(1).get();
+    if (!roSnap.exists) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
+    const opportunity = roSnap.data()!;
+    const unlockPrice = Number(settingsSnap.data()?.unlockPrice ?? 29);
 
   // ---- MOCK PAYMENT (replace with real gateway verification) ----
   const paymentStatus: 'success' | 'failed' = 'success';
@@ -58,7 +59,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Payment failed' }, { status: 402 });
   }
 
-  const contactSnap = await roRef.collection('private').doc('contact').get();
   const contact = contactSnap.exists ? contactSnap.data()! : {};
 
   // Credit the scout — payout scales with the listing's quality score.

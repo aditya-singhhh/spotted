@@ -49,22 +49,31 @@ function AdminBoard({ user }: { user: User }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Optimistic: update the row instantly, sync to the DB in the background,
+  // and only roll back (and reload) if the request actually fails.
   async function act(id: string, action: string) {
-    const token = await user.getIdToken();
-    await fetch('/api/admin/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ rentalOpportunityId: id, action })
-    });
-    load();
+    const statusMap: Record<string, string> = { verify: 'verified', reject: 'rejected', mark_duplicate: 'rejected', mark_rented: 'rented' };
+    const newStatus = statusMap[action] ?? action;
+    const prev = data;
+    setError('');
+    setData((d: any) => ({ ...d, listings: d.listings.map((l: any) => (l.id === id ? { ...l, status: newStatus } : l)) }));
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/admin/verify', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ rentalOpportunityId: id, action }) });
+      if (!res.ok) throw new Error();
+    } catch { setData(prev); setError('Action failed — reverted.'); }
   }
 
   async function del(id: string) {
     if (!confirm('Delete this listing permanently? This removes its property, contact and evidence.')) return;
-    const token = await user.getIdToken();
-    const res = await fetch(`/api/admin/listings/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) { const b = await res.json().catch(() => ({})); setError(b.error || 'Delete failed.'); return; }
-    load();
+    const prev = data;
+    setError('');
+    setData((d: any) => ({ ...d, listings: d.listings.filter((l: any) => l.id !== id) }));
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/admin/listings/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error();
+    } catch { setData(prev); setError('Delete failed — restored.'); }
   }
 
   function startEdit(l: any) {
@@ -73,10 +82,16 @@ function AdminBoard({ user }: { user: User }) {
   }
 
   async function saveEdit(id: string) {
-    const token = await user.getIdToken();
-    const res = await fetch(`/api/admin/listings/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(editForm) });
-    if (!res.ok) { const b = await res.json().catch(() => ({})); setError(b.error || 'Update failed.'); return; }
-    setEditing(null); load();
+    const patch = { ...editForm };
+    const prev = data;
+    setError('');
+    setEditing(null);
+    setData((d: any) => ({ ...d, listings: d.listings.map((l: any) => (l.id === id ? { ...l, ...patch } : l)) }));
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/admin/listings/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(patch) });
+      if (!res.ok) throw new Error();
+    } catch { setData(prev); setError('Update failed — reverted.'); }
   }
 
   async function seedDatabase() {
@@ -91,10 +106,17 @@ function AdminBoard({ user }: { user: User }) {
   }
 
   async function walletAction(action: string, rewardId?: string) {
-    const token = await user.getIdToken();
-    const res = await fetch('/api/admin/wallet', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(action === 'set_price' ? { action, amount: price } : { action, rewardId }) });
-    if (!res.ok) { const body = await res.json(); setError(body.error || 'Wallet action failed.'); return; }
-    load();
+    setError('');
+    const prevWallet = wallet;
+    if (action === 'approve_reward' && rewardId) {
+      setWallet((w: any) => ({ ...w, rewards: w.rewards.map((r: any) => (r.id === rewardId ? { ...r, status: 'available' } : r)) }));
+    }
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/admin/wallet', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(action === 'set_price' ? { action, amount: price } : { action, rewardId }) });
+      if (!res.ok) throw new Error();
+      if (action === 'set_price') load();
+    } catch { setWallet(prevWallet); setError('Wallet action failed.'); }
   }
 
   if (error && !data) return <div className="sticker bg-redSoft p-5"><p className="font-bold">Admin access is not ready.</p><p className="text-sm text-red mt-2">{error}</p><p className="text-xs text-slate mt-3">Sign in through /login with your configured admin email, then refresh this page.</p></div>;

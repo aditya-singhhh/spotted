@@ -5,10 +5,19 @@ import { useEffect, useState } from 'react';
 import Carousel from '@/components/Carousel';
 import Reveal from '@/components/Reveal';
 import { CheckIcon } from '@/components/icons';
+import { readCache, writeCache } from '@/lib/clientCache';
 
 export default function Home() {
   const [listings, setListings] = useState<any[]>([]);
-  useEffect(() => { fetch('/api/listings').then((res) => res.ok ? res.json() : null).then((data) => setListings(data?.listings ?? [])).catch(() => {}); }, []);
+  useEffect(() => {
+    const cached = readCache<any[]>('feed:home');
+    if (cached) setListings(cached);
+    fetch('/api/listings').then((res) => res.ok ? res.json() : null).then((data) => {
+      const l = data?.listings ?? [];
+      setListings(l);
+      writeCache('feed:home', l);
+    }).catch(() => {});
+  }, []);
   const latest = listings[0] ?? null;
   return (
     <main>

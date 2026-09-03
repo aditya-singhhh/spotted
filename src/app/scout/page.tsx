@@ -50,6 +50,7 @@ function ScoutForm({ user }: { user: User }) {
   const [availabilityConfirmed, setAvailabilityConfirmed] = useState(false);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [stage, setStage] = useState('');
   const [done, setDone] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
@@ -107,12 +108,14 @@ function ScoutForm({ user }: { user: User }) {
 
     // Uploads happen only now (on submit), not on file-select. A failed upload
     // is skipped rather than blocking a legitimate discovery.
+    if (media.length) setStage('Optimising & uploading media…');
     const settled = await Promise.allSettled(media.map(async (m) => uploadToCloudinary(await compressImage(m.file), token)));
     const uploaded = settled.filter((s): s is PromiseFulfilledResult<UploadedMedia> => s.status === 'fulfilled').map((s) => s.value);
     if (settled.some((s) => s.status === 'rejected')) {
       setPhotoError('Some files could not be uploaded and were skipped. Your discovery can still be submitted.');
     }
 
+    setStage('Saving your discovery…');
     const res = await fetch('/api/scout/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -134,6 +137,7 @@ function ScoutForm({ user }: { user: User }) {
       })
     });
     setSubmitting(false);
+    setStage('');
     if (res.ok) setDone(true);
     else {
       // Submission failed — delete the just-uploaded media so nothing is orphaned.
@@ -321,7 +325,7 @@ function ScoutForm({ user }: { user: User }) {
       </div>
 
       <button className="btn btn-primary w-full sm:col-span-2" onClick={submit} disabled={submitting}>
-        {submitting ? 'Submitting…' : 'Submit Rental'}
+        {submitting ? (stage || 'Submitting…') : 'Submit Rental'}
       </button>
       {submitError && <p className="text-sm text-red text-center sm:col-span-2">{submitError}</p>}
     </div>

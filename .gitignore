@@ -10,3 +10,4 @@ scripts/serviceAccountKey.json
 _fstest.js
 _shots.mjs
 _shot2.mjs
+*.tsbuildinfo
