@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "rentalOpportunities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "spottedAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

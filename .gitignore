@@ -1,0 +1,12 @@
+node_modules
+.next
+.env
+.env.local
+.DS_Store
+scripts/serviceAccountKey.json
+
+# local scratch / verification artifacts (not for deploy)
+.next-verify
+_fstest.js
+_shots.mjs
+_shot2.mjs
