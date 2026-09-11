@@ -34,11 +34,10 @@ export async function POST(req: NextRequest) {
 
     // These reads are independent — run them together instead of one-by-one to
     // cut the unlock round-trip time (the source of the click→reveal lag).
-    const [, roSnap, settingsSnap, alreadyUnlocked, contactSnap] = await Promise.all([
+    const [, roSnap, settingsSnap, contactSnap] = await Promise.all([
       ensureProfile(uid, { phone: decoded.phone_number, email: decoded.email }),
       roRef.get(),
       adminDb.collection('platformSettings').doc('marketplace').get(),
-      adminDb.collection('unlockTransactions').where('rentalOpportunityId', '==', rentalOpportunityId).where('seekerId', '==', uid).where('paymentStatus', '==', 'success').limit(1).get(),
       roRef.collection('private').doc('contact').get()
     ]);
 
@@ -46,42 +45,31 @@ export async function POST(req: NextRequest) {
     const opportunity = roSnap.data()!;
     const unlockPrice = Number(settingsSnap.data()?.unlockPrice ?? 29);
 
-  // ---- MOCK PAYMENT (replace with real gateway verification) ----
-  const paymentStatus: 'success' | 'failed' = 'success';
-  // -----------------------------------------------------------------
+    // ---- MOCK PAYMENT (replace with real gateway verification) ----
+    // -----------------------------------------------------------------
 
-  const now = new Date().toISOString();
-  const txnRef = alreadyUnlocked.empty
-    ? await adminDb.collection('unlockTransactions').add({ rentalOpportunityId, seekerId: uid, amount: unlockPrice, paymentStatus, paymentRef: `mock_${Date.now()}`, createdAt: now })
-    : alreadyUnlocked.docs[0].ref;
-
-  if (paymentStatus !== 'success') {
-    return NextResponse.json({ error: 'Payment failed' }, { status: 402 });
-  }
-
-  const contact = contactSnap.exists ? contactSnap.data()! : {};
-
-  // Credit the scout — payout scales with the listing's quality score.
-  if (opportunity.scoutId && alreadyUnlocked.empty) {
+    // One unlock per (user, listing): a deterministic txn id + a transaction make
+    // this idempotent, so concurrent clicks can't double-charge or double-credit.
+    const now = new Date().toISOString();
+    const txnRef = adminDb.collection('unlockTransactions').doc(`${uid}_${rentalOpportunityId}`);
     const reward = scoutReward(unlockPrice, Number(opportunity.trustScore ?? 0), SCOUT_SHARE);
-    await adminDb.collection('scoutRewards').add({
-      scoutId: opportunity.scoutId,
-      unlockTransactionId: txnRef.id,
-      amount: reward,
-      status: 'pending',
-      createdAt: now
+
+    await adminDb.runTransaction(async (tx) => {
+      if ((await tx.get(txnRef)).exists) return;
+      const scoutRef = opportunity.scoutId ? adminDb.collection('scouts').doc(opportunity.scoutId) : null;
+      const scoutSnap = scoutRef ? await tx.get(scoutRef) : null;
+
+      tx.set(txnRef, { rentalOpportunityId, seekerId: uid, amount: unlockPrice, paymentStatus: 'success', paymentRef: `mock_${Date.now()}`, createdAt: now });
+      if (scoutRef) {
+        tx.set(adminDb.collection('scoutRewards').doc(), { scoutId: opportunity.scoutId, unlockTransactionId: txnRef.id, amount: reward, status: 'pending', createdAt: now });
+        if (scoutSnap!.exists) {
+          const s = scoutSnap!.data()!;
+          tx.update(scoutRef, { pendingEarnings: (s.pendingEarnings ?? 0) + reward, totalEarned: (s.totalEarned ?? 0) + reward });
+        }
+      }
     });
 
-    const scoutRef = adminDb.collection('scouts').doc(opportunity.scoutId);
-    const scoutSnap = await scoutRef.get();
-    if (scoutSnap.exists) {
-      const scout = scoutSnap.data()!;
-      await scoutRef.update({
-        pendingEarnings: (scout.pendingEarnings ?? 0) + reward,
-        totalEarned: (scout.totalEarned ?? 0) + reward
-      });
-    }
-  }
+    const contact = contactSnap.exists ? contactSnap.data()! : {};
 
     return NextResponse.json({
       unlocked: true,

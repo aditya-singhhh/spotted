@@ -20,8 +20,11 @@ export async function DELETE(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
+  // Only allow deleting media inside the caller's own upload folder — prevents a
+  // signed-in user from destroying another user's (or a live listing's) media.
+  const ownPrefix = `spotted-evidence/${decoded.uid}/`;
   const items: CleanupItem[] = Array.isArray(body.items)
-    ? body.items.filter((i: any) => i && typeof i.publicId === 'string').slice(0, 12)
+    ? body.items.filter((i: any) => i && typeof i.publicId === 'string' && i.publicId.startsWith(ownPrefix)).slice(0, 12)
     : [];
   if (!items.length) return NextResponse.json({ deleted: 0 });
 

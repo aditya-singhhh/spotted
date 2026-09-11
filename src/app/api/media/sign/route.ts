@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getUserFromRequest } from '@/lib/apiAuth';
 
-const FOLDER = 'spotted-evidence';
 const ALLOWED_FORMATS = 'jpg,jpeg,png,webp,heic,heif,mp4,webm,mov';
 
 // POST /api/media/sign — issues a short-lived signature for a signed Cloudinary
@@ -19,10 +18,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Signed uploads are not configured.' }, { status: 501 });
   }
 
+  // Scope each user's uploads to their own folder so media deletion can be
+  // restricted to the owner (see the DELETE handler in ../route.ts).
+  const folder = `spotted-evidence/${decoded.uid}`;
   const timestamp = Math.round(Date.now() / 1000);
-  const params: Record<string, string | number> = { allowed_formats: ALLOWED_FORMATS, folder: FOLDER, timestamp };
+  const params: Record<string, string | number> = { allowed_formats: ALLOWED_FORMATS, folder, timestamp };
   const toSign = Object.keys(params).sort().map((k) => `${k}=${params[k]}`).join('&');
   const signature = crypto.createHash('sha1').update(toSign + apiSecret).digest('hex');
 
-  return NextResponse.json({ cloudName, apiKey, timestamp, folder: FOLDER, allowedFormats: ALLOWED_FORMATS, signature });
+  return NextResponse.json({ cloudName, apiKey, timestamp, folder, allowedFormats: ALLOWED_FORMATS, signature });
 }

@@ -14,9 +14,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Public profile — a user may read/update only their own doc.
+    // Public profile — a user may read their own doc, and update only
+    // non-privileged fields. `role` must never be client-writable (that would
+    // let anyone self-promote to admin); it is only ever set server-side.
     match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
       allow create: if false; // created server-side on first sign-in
     }
 

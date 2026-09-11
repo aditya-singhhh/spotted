@@ -57,7 +57,7 @@ export default function AppNav() {
             key={t.href}
             href={t.href}
             aria-current={active(t.href) ? 'page' : undefined}
-            className={`flex min-w-[64px] min-h-[44px] flex-col items-center justify-center gap-0.5 text-[10px] font-semibold px-3 py-1 rounded-xl ${active(t.href) ? 'text-yellow' : 'text-paper/70 hover:text-paper'}`}
+            className={`flex min-w-[64px] min-h-[44px] flex-col items-center justify-center gap-0.5 text-[10px] font-semibold px-3 py-1 rounded-xl transition-colors ${active(t.href) ? 'text-white' : 'text-paper/50 hover:text-paper/80'}`}
           >
             <t.Icon className="w-5 h-5" />
             <span>{t.label}</span>

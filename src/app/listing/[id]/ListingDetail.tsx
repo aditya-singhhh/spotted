@@ -90,7 +90,7 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
             <Fact label="Size" value={`${listing.bhk} BHK`} />
             <Fact label="Deposit" value={`₹${Number(listing.deposit).toLocaleString('en-IN')}`} />
             <Fact label="Furnishing" value={listing.furnishing || 'Unfurnished'} />
-            <Fact label="Who can rent" value={listing.bachelorAllowed === 'yes' ? 'Bachelors OK' : 'Families'} />
+            <Fact label="Who can rent" value={listing.bachelorAllowed === 'yes' ? 'Bachelors OK' : listing.bachelorAllowed === 'no' ? 'Families only' : 'Ask the owner'} />
           </div>
 
           <div className="panel p-4 bg-canvas border-dashed">
@@ -135,7 +135,7 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
               )}
             </div>
           </div>
-          <p className="text-center text-[11px] text-slate">{listing.freshness || 'Freshly spotted'} · <button className="underline hover:text-ink">report listing</button></p>
+          <p className="text-center text-[11px] text-slate">Freshly spotted · <a href={`mailto:hello@spotted.app?subject=Report listing ${id}`} className="underline hover:text-ink">report a problem</a></p>
         </aside>
       </div>
     </main>

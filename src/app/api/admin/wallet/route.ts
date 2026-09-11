@@ -25,10 +25,20 @@ export async function POST(req: NextRequest) {
   }
   if (body.action === 'approve_reward') {
     const ref = adminDb.collection('scoutRewards').doc(body.rewardId);
-    const reward = await ref.get();
-    if (!reward.exists || reward.data()?.status !== 'pending') return NextResponse.json({ error: 'Reward is unavailable or already approved.' }, { status: 400 });
-    const data = reward.data()!; const scoutRef = adminDb.collection('scouts').doc(data.scoutId);
-    await adminDb.runTransaction(async tx => { const scout = await tx.get(scoutRef); const current = scout.data() ?? {}; tx.update(ref, { status: 'available', approvedAt: new Date().toISOString(), approvedBy: user.uid }); tx.set(scoutRef, { pendingEarnings: Math.max(0, Number(current.pendingEarnings ?? 0) - Number(data.amount)), availableEarnings: Number(current.availableEarnings ?? 0) + Number(data.amount) }, { merge: true }); });
+    // Re-check the pending status inside the transaction so two concurrent
+    // approvals can't both credit the scout.
+    const ok = await adminDb.runTransaction(async (tx) => {
+      const reward = await tx.get(ref);
+      if (!reward.exists || reward.data()?.status !== 'pending') return false;
+      const data = reward.data()!;
+      const scoutRef = adminDb.collection('scouts').doc(data.scoutId);
+      const scout = await tx.get(scoutRef);
+      const current = scout.data() ?? {};
+      tx.update(ref, { status: 'available', approvedAt: new Date().toISOString(), approvedBy: user.uid });
+      tx.set(scoutRef, { pendingEarnings: Math.max(0, Number(current.pendingEarnings ?? 0) - Number(data.amount)), availableEarnings: Number(current.availableEarnings ?? 0) + Number(data.amount) }, { merge: true });
+      return true;
+    });
+    if (!ok) return NextResponse.json({ error: 'Reward is unavailable or already approved.' }, { status: 400 });
     return NextResponse.json({ success: true });
   }
   return NextResponse.json({ error: 'Unknown wallet action.' }, { status: 400 });

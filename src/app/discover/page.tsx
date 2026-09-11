@@ -102,7 +102,7 @@ export default function DiscoverPage() {
           </div>
           <select className="input" value={bhk} onChange={(e) => setBhk(e.target.value)}><option value="">Any size</option><option value="1">1 BHK</option><option value="2">2 BHK</option><option value="3">3 BHK</option></select>
           <select className="input" value={budget} onChange={(e) => setBudget(e.target.value)}><option value="">Any budget</option><option value="20000">Under ₹20,000</option><option value="30000">Under ₹30,000</option><option value="45000">Under ₹45,000</option></select>
-          <button onClick={() => setBachelors(!bachelors)} aria-pressed={bachelors} className={`btn shrink-0 ${bachelors ? 'btn-primary' : ''}`}><CheckIcon className="w-4 h-4" /> Bachelor</button>
+          <button onClick={() => setBachelors(!bachelors)} aria-pressed={bachelors} className={`btn shrink-0 ${bachelors ? 'btn-primary' : ''}`}>{bachelors && <CheckIcon className="w-4 h-4" />} Bachelor</button>
         </div>
       </div>
 
@@ -166,7 +166,7 @@ function ListingCard({ l, delay }: { l: Listing; delay: number }) {
           <span className="font-mono font-bold">₹{l.rent.toLocaleString('en-IN')}<span className="text-xs font-normal text-slate">/mo</span></span>
         </div>
         <p className="text-sm text-slate mt-1 flex items-center gap-1"><MapPinIcon className="w-3.5 h-3.5 shrink-0" /> {l.landmark}</p>
-        <p className="text-xs text-slate mt-2 first-letter:uppercase">{l.beds || `${l.furnishing} · ${l.bachelorAllowed === 'yes' ? 'Bachelor friendly' : 'Family home'}`}</p>
+        <p className="text-xs text-slate mt-2 first-letter:uppercase">{l.beds || `${l.furnishing} · ${l.bachelorAllowed === 'yes' ? 'Bachelor friendly' : l.bachelorAllowed === 'no' ? 'Family home' : 'Ask owner'}`}</p>
         <div className="mt-3 pt-3 border-t border-line flex items-center justify-between text-xs">
           <span className="flex items-center gap-1 text-green font-medium"><ShieldCheckIcon className="w-3.5 h-3.5" /> Trust {l.trustScore}</span>
           <span className="text-slate">{l.kmAway !== undefined ? `${l.kmAway.toFixed(1)} km away` : l.freshness || 'Fresh today'}</span>
