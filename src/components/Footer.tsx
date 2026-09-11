@@ -2,8 +2,8 @@ import Link from 'next/link';
 
 const groups = [
   { title: 'Explore', links: [['Browse rentals', '/discover'], ['Become a scout', '/scout'], ['Your profile', '/scout/dashboard']] },
-  { title: 'Company', links: [['How it works', '/'], ['Trust & safety', '/'], ['Contact', '/']] },
-  { title: 'Legal', links: [['Privacy', '/'], ['Terms', '/'], ['Report a listing', '/']] }
+  { title: 'Company', links: [['How it works', '/#how-it-works'], ['Trust & safety', '/trust-and-safety'], ['Contact', '/contact']] },
+  { title: 'Legal', links: [['Privacy', '/privacy'], ['Terms', '/terms'], ['Report a listing', '/trust-and-safety']] }
 ];
 
 export default function Footer() {

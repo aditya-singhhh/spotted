@@ -86,7 +86,7 @@ export default function Home() {
         </section>
       )}
 
-      <section className="border-y border-line bg-paper">
+      <section id="how-it-works" className="border-y border-line bg-paper scroll-mt-20">
         <div className="max-w-5xl mx-auto px-5 py-14 sm:py-16">
           <div className="text-center max-w-xl mx-auto mb-12">
             <p className="section-label mb-2">How it works</p>

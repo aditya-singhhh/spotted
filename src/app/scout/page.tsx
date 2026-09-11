@@ -7,7 +7,6 @@ import { uploadToCloudinary, type UploadedMedia } from '@/lib/cloudinary';
 import { compressImage } from '@/lib/compressImage';
 import { getCurrentLocation, reverseGeocode, type LatLng } from '@/lib/geo';
 import type { User } from 'firebase/auth';
-import TopBar from '@/components/TopBar';
 import { MapPinIcon, PlusIcon, PlayIcon, XIcon, CheckIcon } from '@/components/icons';
 
 const neighbourhoods = [
@@ -21,13 +20,27 @@ const neighbourhoods = [
 
 export default function ScoutSubmitPage() {
   return (
-    <main className="max-w-3xl mx-auto px-5">
-      <TopBar eyebrow="Scout network" title="Submit a rental" />
-      <div className="sticker bg-accentSoft p-4 mb-5">
-        <p className="font-bold">Anyone can become a Scout.</p>
-        <p className="text-sm text-slate mt-1">Sign in, share a genuine TO-LET discovery, and earn when a renter unlocks it. Our team reviews every listing before it goes live.</p>
+    <main className="max-w-2xl mx-auto px-5 pt-8 pb-4">
+      <p className="section-label mb-2">Scout network</p>
+      <h1 className="text-3xl sm:text-4xl">Earn from boards you spot.</h1>
+      <p className="text-slate text-lg mt-3">See a TO-LET board on your street? Share it in two minutes. Our team verifies it, and you earn every time a renter unlocks it — no brokerage, no follow-ups.</p>
+
+      <div className="grid sm:grid-cols-3 gap-3 mt-7">
+        {[['01 · Submit', 'Snap a photo or short video of the board and add the rent and area.'], ['02 · We verify', 'Our team reviews every listing for genuineness — usually within a day.'], ['03 · You earn', 'Get up to 50% of every unlock on your listing, kept in your wallet.']].map(([t, b]) => (
+          <div key={t} className="panel p-4"><p className="section-label">{t}</p><p className="text-sm text-ink/80 mt-1.5">{b}</p></div>
+        ))}
       </div>
-      <AuthGate>{(user) => <ScoutForm user={user} />}</AuthGate>
+
+      <div className="rounded-2xl bg-ink text-paper p-5 mt-4">
+        <p className="section-label !text-accent">Higher quality, higher pay</p>
+        <p className="text-sm text-paper/80 mt-1.5 max-w-lg">A video of the board and a confirmed owner raise your trust score — and your reward. A well-documented, verified listing with 10 unlocks can earn <b className="text-paper">₹150+</b>. See <a href="/trust-and-safety" className="underline">how trust works</a>.</p>
+      </div>
+
+      <div className="mt-9 pt-2 border-t border-line">
+        <h2 className="text-xl mt-6 mb-1">Submit a discovery</h2>
+        <p className="text-sm text-slate mb-5">Sign in to submit — it takes under two minutes.</p>
+        <AuthGate>{(user) => <ScoutForm user={user} />}</AuthGate>
+      </div>
     </main>
   );
 }

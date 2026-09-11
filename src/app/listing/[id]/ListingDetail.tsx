@@ -80,7 +80,7 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
           <div>
             <div className="flex gap-2 flex-wrap mb-3">
               <span className={`badge ${listing.status === 'verified' ? 'badge-green' : 'badge-yellow'}`}>{listing.status === 'verified' ? <><CheckIcon className="w-3.5 h-3.5" /> Owner verified</> : 'Community reported'}</span>
-              <span className="badge badge-accent"><ShieldCheckIcon className="w-3.5 h-3.5" /> Trust {listing.trustScore}/100</span>
+              <Link href="/trust-and-safety" title="How the trust score works" className="badge badge-accent hover:brightness-95"><ShieldCheckIcon className="w-3.5 h-3.5" /> Trust {listing.trustScore}/100</Link>
             </div>
             <h1 className="text-2xl sm:text-3xl">{listing.bhk} BHK near {listing.landmark}</h1>
             <p className="text-slate mt-2 leading-relaxed">{listing.note || 'A fresh rental opportunity discovered on the street in your neighbourhood. Verify the details and connect with the owner directly.'}</p>
@@ -116,12 +116,25 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
 
             <div className="mt-4">
               {!unlocked ? (
-                <AuthGate>{() => (
-                  <>
-                    <button className="btn btn-primary w-full" onClick={unlock} disabled={unlocking}>{unlocking ? 'Unlocking…' : `Unlock owner contact · ₹${unlockPrice}`}</button>
-                    <p className="text-xs text-slate mt-2 text-center">One unlock connects you with the owner — no brokerage.</p>
-                  </>
-                )}</AuthGate>
+                <>
+                  <div className="rounded-xl border border-line bg-canvas p-3 mb-3">
+                    <div className="flex items-baseline justify-between">
+                      <span className="font-semibold text-sm">Unlock owner contact</span>
+                      <span className="font-mono font-bold text-accent">₹{unlockPrice}</span>
+                    </div>
+                    <ul className="text-xs text-slate mt-2 space-y-1">
+                      <li className="flex items-center gap-1.5"><CheckIcon className="w-3.5 h-3.5 text-green shrink-0" /> Owner name &amp; phone number</li>
+                      <li className="flex items-center gap-1.5"><CheckIcon className="w-3.5 h-3.5 text-green shrink-0" /> Exact location + Google Maps</li>
+                      <li className="flex items-center gap-1.5"><CheckIcon className="w-3.5 h-3.5 text-green shrink-0" /> Kept in your profile — no re-charge</li>
+                    </ul>
+                  </div>
+                  <AuthGate>{() => (
+                    <>
+                      <button className="btn btn-primary w-full" onClick={unlock} disabled={unlocking}>{unlocking ? 'Unlocking…' : `Unlock now · ₹${unlockPrice}`}</button>
+                      <p className="text-xs text-slate mt-2 text-center">One-time fee · no brokerage · no subscription.</p>
+                    </>
+                  )}</AuthGate>
+                </>
               ) : (
                 <div className="rounded-xl bg-greenSoft border border-green/20 p-4">
                   <span className="badge badge-green"><UnlockIcon className="w-3.5 h-3.5" /> Unlocked</span>
