@@ -112,8 +112,8 @@ export default function AuthGate({ children }: { children: (user: User) => React
       <h3 className="text-lg mb-1">Sign in to continue</h3>
       <p className="text-xs text-slate-500 mb-4">Save discoveries, unlock contact details, and track your scout earnings.</p>
       <div className="grid grid-cols-2 gap-2 mb-4">
-        <button type="button" className={`btn btn-sm ${method === 'email' ? 'btn-yellow' : ''}`} onClick={() => setMethod('email')}>Email</button>
-        <button type="button" className={`btn btn-sm ${method === 'phone' ? 'btn-yellow' : ''}`} onClick={() => setMethod('phone')}>Phone OTP</button>
+        <button type="button" className={`btn btn-sm ${method === 'email' ? 'btn-primary' : ''}`} onClick={() => setMethod('email')}>Email</button>
+        <button type="button" className={`btn btn-sm ${method === 'phone' ? 'btn-primary' : ''}`} onClick={() => setMethod('phone')}>Phone OTP</button>
       </div>
       {method === 'email' ? (
         <>
@@ -127,7 +127,7 @@ export default function AuthGate({ children }: { children: (user: User) => React
       ) : !otpSent ? (
         <>
           <input
-            className="w-full border-2 border-ink rounded-xl px-3 py-2 text-sm mb-3"
+            className="input mb-3"
             type="tel"
             placeholder="+91 98765 43210"
             value={phone}
@@ -140,7 +140,7 @@ export default function AuthGate({ children }: { children: (user: User) => React
       ) : (
         <>
           <input
-            className="w-full border-2 border-ink rounded-xl px-3 py-2 text-sm mb-3"
+            className="input mb-3"
             placeholder="6-digit code"
             value={code}
             onChange={(e) => setCode(e.target.value)}

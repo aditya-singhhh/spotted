@@ -189,7 +189,7 @@ function Stats({ user }: { user: User }) {
               const bar = q >= 70 ? 'bg-green' : q >= 40 ? 'bg-yellow' : 'bg-red';
               return (
                 <div key={sub.id} className="panel panel-hover overflow-hidden">
-                  <div className="relative h-28 bg-yellowSoft overflow-hidden">
+                  <div className="relative h-28 bg-canvas overflow-hidden">
                     <Media url={sub.media} emoji="🏠" alt={`${sub.bhk} BHK`} className="w-full h-full object-cover" emojiClassName="absolute inset-0 flex items-center justify-center text-4xl opacity-70" />
                     <span className={`badge absolute top-2 right-2 capitalize ${sub.status === 'verified' ? 'badge-green' : sub.status === 'rejected' ? 'badge-red' : sub.status === 'rented' ? 'badge-ink' : 'badge-yellow'}`}>{sub.status}</span>
                   </div>

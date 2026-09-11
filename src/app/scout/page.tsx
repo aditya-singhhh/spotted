@@ -23,7 +23,7 @@ export default function ScoutSubmitPage() {
   return (
     <main className="max-w-3xl mx-auto px-5">
       <TopBar eyebrow="Scout network" title="Submit a rental" />
-      <div className="sticker bg-yellowSoft p-4 mb-5">
+      <div className="sticker bg-accentSoft p-4 mb-5">
         <p className="font-bold">Anyone can become a Scout.</p>
         <p className="text-sm text-slate mt-1">Sign in, share a genuine TO-LET discovery, and earn when a renter unlocks it. Our team reviews every listing before it goes live.</p>
       </div>
@@ -170,7 +170,7 @@ function ScoutForm({ user }: { user: User }) {
         <label className="text-xs font-bold block mb-1">Photos &amp; videos of the TO-LET board</label>
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
           {media.map((m, i) => (
-            <div key={m.url} className="relative aspect-square rounded-xl overflow-hidden border-2 border-ink bg-yellowSoft">
+            <div key={m.url} className="relative aspect-square rounded-xl overflow-hidden border border-line bg-canvas">
               {m.video
                 ? <video src={m.url} className="w-full h-full object-cover" muted playsInline />
                 : <img src={m.url} alt="" className="w-full h-full object-cover" />}
@@ -180,7 +180,7 @@ function ScoutForm({ user }: { user: User }) {
             </div>
           ))}
           {media.length < MAX_MEDIA && (
-            <label className="aspect-square rounded-xl border-2 border-dashed border-ink bg-yellowSoft flex flex-col items-center justify-center text-center cursor-pointer hover:bg-yellow">
+            <label className="aspect-square rounded-xl border-2 border-dashed border-line bg-canvas flex flex-col items-center justify-center text-center cursor-pointer hover:border-accent hover:bg-accentSoft transition-colors">
               <PlusIcon className="w-6 h-6" />
               <span className="text-[10px] font-bold mt-1">Add media</span>
               <input type="file" accept="image/*,video/*" multiple className="hidden" onChange={onFiles} />
@@ -211,7 +211,7 @@ function ScoutForm({ user }: { user: User }) {
               key={n}
               type="button"
               onClick={() => setBhk(n)}
-              className={`flex-1 border-2 border-ink rounded-lg py-2 text-sm font-bold ${bhk === n ? 'bg-yellow' : ''}`}
+              className={`flex-1 border rounded-lg py-2 text-sm font-semibold transition-colors ${bhk === n ? 'bg-ink text-white border-ink' : 'border-line hover:bg-canvas'}`}
             >
               {n}
               {n === 4 ? '+' : ''}
@@ -223,7 +223,7 @@ function ScoutForm({ user }: { user: User }) {
       <div>
         <label className="text-xs font-bold block mb-1">Monthly rent (₹) <span className="text-red">*</span></label>
         <input
-          className="w-full border-2 border-ink rounded-xl px-3 py-2 text-sm"
+          className="input"
           type="number"
           value={rent}
           onChange={(e) => setRent(e.target.value)}
@@ -233,7 +233,7 @@ function ScoutForm({ user }: { user: User }) {
       <div>
         <label className="text-xs font-bold block mb-1">Deposit (₹)</label>
         <input
-          className="w-full border-2 border-ink rounded-xl px-3 py-2 text-sm"
+          className="input"
           type="number"
           value={deposit}
           onChange={(e) => setDeposit(e.target.value)}
@@ -269,7 +269,7 @@ function ScoutForm({ user }: { user: User }) {
               key={v}
               type="button"
               onClick={() => { setContacted(v); if (v === 'no') setAvailabilityConfirmed(false); }}
-              className={`flex-1 border-2 border-ink rounded-lg py-2 px-2 text-xs font-bold ${contacted === v ? 'bg-green text-paper' : 'bg-paper'}`}
+              className={`flex-1 border rounded-lg py-2 px-2 text-xs font-semibold transition-colors ${contacted === v ? 'bg-green text-white border-green' : 'border-line bg-paper hover:bg-canvas'}`}
             >
               {label}
             </button>
@@ -287,7 +287,7 @@ function ScoutForm({ user }: { user: User }) {
       <div>
         <label className="text-xs font-bold block mb-1">Furnishing</label>
         <select
-          className="w-full border-2 border-ink rounded-xl px-3 py-2 text-sm"
+          className="input"
           value={furnishing}
           onChange={(e) => setFurnishing(e.target.value)}
         >
@@ -305,8 +305,8 @@ function ScoutForm({ user }: { user: User }) {
               key={v}
               type="button"
               onClick={() => setBachelor(v)}
-              className={`flex-1 border-2 border-ink rounded-lg py-2 text-sm font-bold capitalize ${
-                bachelor === v ? 'bg-yellow' : ''
+              className={`flex-1 border rounded-lg py-2 text-sm font-semibold capitalize transition-colors ${
+                bachelor === v ? 'bg-ink text-white border-ink' : 'border-line hover:bg-canvas'
               }`}
             >
               {v}
@@ -318,7 +318,7 @@ function ScoutForm({ user }: { user: User }) {
       <div className="sm:col-span-2">
         <label className="text-xs font-bold block mb-1">Additional information</label>
         <textarea
-          className="w-full border-2 border-ink rounded-xl px-3 py-2 text-sm"
+          className="input"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />

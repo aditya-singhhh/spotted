@@ -26,7 +26,7 @@ export default function AppNav() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-paper/90 backdrop-blur border-b-2 border-ink">
+      <header className="sticky top-0 z-50 bg-paper/85 backdrop-blur border-b border-line">
         <div className="max-w-6xl mx-auto px-5 md:px-6 h-14 md:h-16 flex items-center gap-4 md:gap-6">
           <Link href="/" className="font-display text-xl md:text-2xl leading-none">spotted.</Link>
           <nav className="hidden md:flex items-center gap-1" aria-label="Primary">

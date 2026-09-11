@@ -1,30 +1,38 @@
 import type { Config } from 'tailwindcss';
 
+// Minimal-premium palette: white surfaces, near-black primary, indigo accent,
+// hairline borders. Legacy names (pink/yellow) remapped to muted modern values.
 const config: Config = {
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        paper: '#FFFCF4',
-        ink: '#14171A',
-        slate: '#6E7278',
-        yellow: '#FFD23F',
-        yellowSoft: '#FFF3CE',
-        pink: '#FF4D6A',
-        pinkSoft: '#FFE3E9',
-        green: '#149A63',
-        greenSoft: '#DEFBEE',
-        red: '#E23B3B',
-        redSoft: '#FCE3E3'
+        paper: '#FFFFFF',
+        canvas: '#FAFAFA',
+        ink: '#111827',
+        slate: '#6B7280',
+        line: '#E5E7EB',
+        accent: '#4F46E5',
+        accentSoft: '#EEF2FF',
+        yellow: '#F59E0B',
+        yellowSoft: '#FEF3C7',
+        pink: '#4F46E5',
+        pinkSoft: '#EEF2FF',
+        green: '#059669',
+        greenSoft: '#ECFDF5',
+        red: '#DC2626',
+        redSoft: '#FEF2F2'
       },
       fontFamily: {
-        display: ['"Bricolage Grotesque"', 'sans-serif'],
-        body: ['Inter', 'sans-serif'],
-        mono: ['"Space Mono"', 'monospace']
+        display: ['Inter', 'system-ui', 'sans-serif'],
+        body: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['"Space Mono"', 'ui-monospace', 'monospace']
       },
       boxShadow: {
-        offset: '5px 5px 0px rgba(20,23,26,1)',
-        offsetSm: '3px 3px 0px rgba(20,23,26,1)'
+        offset: '0 1px 3px rgba(17,24,39,0.08), 0 1px 2px rgba(17,24,39,0.04)',
+        offsetSm: '0 1px 2px rgba(17,24,39,0.06)',
+        card: '0 1px 3px rgba(17,24,39,0.06)',
+        lift: '0 8px 24px rgba(17,24,39,0.10)'
       }
     }
   },

@@ -35,7 +35,7 @@ export default function Carousel({ slides }: { slides: Slide[] }) {
 
   return (
     <div className="sticker overflow-hidden relative select-none">
-      <div className="relative h-64 sm:h-80 lg:h-[26rem] bg-yellowSoft border-b-2 border-ink flex items-center justify-center overflow-hidden">
+      <div className="relative h-64 sm:h-80 lg:h-[26rem] bg-canvas border-b border-line flex items-center justify-center overflow-hidden">
         <Media
           key={s.id}
           url={s.media}
