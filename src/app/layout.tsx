@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import AppNav from '@/components/AppNav';
+import Footer from '@/components/Footer';
 
 export const metadata: Metadata = {
   title: 'spotted. — find rentals the internet missed',
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-paper text-ink font-body pb-24 md:pb-0">
         <AppNav />
         {children}
+        <Footer />
       </body>
     </html>
   );
