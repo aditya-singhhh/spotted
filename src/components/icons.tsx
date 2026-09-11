@@ -59,3 +59,15 @@ export const HeartIcon = (p: SVGProps<SVGSVGElement>) => (
 export const HeartFilledIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon fill="currentColor" stroke="none" {...p}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z" /></Icon>
 );
+export const WalletIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="M3 7a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v2" /><path d="M3 7v12a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" /><path d="M22 10v4h-4a2 2 0 0 1 0-4Z" /></Icon>
+);
+export const TrendingUpIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="M3 17l6-6 4 4 8-8" /><path d="M17 7h4v4" /></Icon>
+);
+export const ShieldCheckIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" /></Icon>
+);
+export const SparkleIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2" /></Icon>
+);
