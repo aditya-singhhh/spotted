@@ -40,24 +40,19 @@ export default function AuthGate({ children }: { children: (user: User) => React
   const recaptchaContainerId = 'recaptcha-container';
 
   useEffect(() => {
-    const fallback = window.setTimeout(() => setLoading(false), 2500);
+    // Resolve loading only when Firebase reports auth state (restored session or
+    // null) — no premature timer that flashes the login form before it's known.
     const unsub = onAuthStateChanged(auth, async (u) => {
-      // Render the Firebase session immediately. Profile bootstrapping should
-      // never make the whole app appear frozen on a slow network.
       setUser(u);
       setLoading(false);
-      window.clearTimeout(fallback);
       if (u) {
         try {
           const token = await u.getIdToken();
           await fetch('/api/profile', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-        } catch {
-          // The gate still renders the Firebase session. Server routes will
-          // show a precise configuration error if profile setup is unavailable.
-        }
+        } catch { /* server routes surface a precise error if setup is unavailable */ }
       }
     });
-    return () => { window.clearTimeout(fallback); unsub(); };
+    return () => unsub();
   }, []);
 
   function getRecaptcha() {
@@ -104,7 +99,14 @@ export default function AuthGate({ children }: { children: (user: User) => React
     }
   }
 
-  if (loading) return <div className="p-6 text-sm text-slate-500">Loading…</div>;
+  if (loading) return (
+    <div className="sticker p-6 max-w-sm mx-auto mt-6">
+      <div className="h-5 w-40 skeleton rounded mb-4" />
+      <div className="h-10 skeleton rounded mb-3" />
+      <div className="h-10 skeleton rounded mb-3" />
+      <div className="h-11 skeleton rounded" />
+    </div>
+  );
   if (user) return <>{children(user)}</>;
 
   return (

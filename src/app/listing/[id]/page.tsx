@@ -4,7 +4,9 @@ import { getPublicListing } from '@/lib/listings';
 import { mediaKind } from '@/lib/reward';
 import ListingDetail from './ListingDetail';
 
-export const dynamic = 'force-dynamic';
+// ISR: cache the rendered listing at the edge and revalidate periodically so
+// repeat visits are instant instead of hitting Firestore every time.
+export const revalidate = 60;
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const listing = await getPublicListing(params.id).catch(() => null);
