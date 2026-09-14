@@ -28,9 +28,9 @@ const WHY = [
 ];
 
 const STEPS: { Icon: ComponentType<{ className?: string }>; title: string; body: string }[] = [
-  { Icon: SearchIcon, title: 'Search your area', body: 'Browse fresh, real rental boards spotted near you — filtered by size and budget.' },
-  { Icon: ShieldCheckIcon, title: 'Check the trust', body: 'See verification status, a trust score and approximate location before you commit.' },
-  { Icon: TrendingUpIcon, title: 'Connect directly', body: "Unlock the owner's contact for a small fee — no brokers, no runaround." }
+  { Icon: SearchIcon, title: 'Search your area', body: 'Browse real boards spotted near you, by size and budget.' },
+  { Icon: ShieldCheckIcon, title: 'Check the trust', body: 'See the trust score and area before you commit.' },
+  { Icon: TrendingUpIcon, title: 'Connect directly', body: 'Unlock the owner’s contact for a small fee — no brokers.' }
 ];
 
 export default function Home() {
