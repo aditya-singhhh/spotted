@@ -21,6 +21,11 @@ function AdminBoard({ user }: { user: User }) {
   const [price, setPrice] = useState('29');
   const [plans, setPlans] = useState<any[]>([]);
   const [savingPlans, setSavingPlans] = useState(false);
+  const [tab, setTab] = useState<'overview' | 'requests' | 'payouts' | 'listings' | 'team'>('overview');
+  const [reqData, setReqData] = useState<any>(null);
+  const [assignPick, setAssignPick] = useState<Record<string, string>>({});
+  const [team, setTeam] = useState<any[]>([]);
+  const [grantEmail, setGrantEmail] = useState('');
   const [error, setError] = useState('');
   const [seeding, setSeeding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -44,6 +49,36 @@ function AdminBoard({ user }: { user: User }) {
     setData(body);
     const walletRes = await fetch('/api/admin/wallet', { headers: { Authorization: `Bearer ${token}` } });
     if (walletRes.ok) { const walletBody = await walletRes.json(); setWallet(walletBody); setPrice(String(walletBody.unlockPrice)); setPlans(Array.isArray(walletBody.plans) ? walletBody.plans : []); }
+    const [rq, tm] = await Promise.all([
+      fetch('/api/admin/scout-requests', { headers: { Authorization: `Bearer ${token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/admin/team', { headers: { Authorization: `Bearer ${token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    ]);
+    if (rq) setReqData(rq);
+    if (tm) setTeam(tm.admins ?? []);
+  }
+
+  async function assignRequest(id: string) {
+    const scoutId = assignPick[id];
+    if (!scoutId) { setError('Pick a scout to assign.'); return; }
+    setError('');
+    const token = await user.getIdToken();
+    const res = await fetch('/api/admin/scout-requests', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ action: 'assign', id, scoutId }) });
+    if (res.ok) { const { assignedScoutName } = await res.json(); setReqData((d: any) => ({ ...d, requests: d.requests.map((r: any) => (r.id === id ? { ...r, status: 'assigned', assignedScoutId: scoutId, assignedScoutName } : r)) })); }
+    else setError((await res.json()).error ?? 'Assign failed.');
+  }
+  async function closeRequest(id: string) {
+    const token = await user.getIdToken();
+    setReqData((d: any) => ({ ...d, requests: d.requests.map((r: any) => (r.id === id ? { ...r, status: 'closed' } : r)) }));
+    fetch('/api/admin/scout-requests', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ action: 'close', id }) }).catch(() => {});
+  }
+  async function teamAction(action: 'grant' | 'revoke', email: string) {
+    setError('');
+    const token = await user.getIdToken();
+    const res = await fetch('/api/admin/team', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ action, email }) });
+    if (!res.ok) { setError((await res.json()).error ?? 'Team action failed.'); return; }
+    if (action === 'grant') setGrantEmail('');
+    const tm = await fetch('/api/admin/team', { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()).catch(() => null);
+    if (tm) setTeam(tm.admins ?? []);
   }
 
   function updatePlan(i: number, patch: any) { setPlans((ps) => ps.map((p, idx) => (idx === i ? { ...p, ...patch } : p))); }
@@ -155,6 +190,13 @@ function AdminBoard({ user }: { user: User }) {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4"><p className="text-sm text-slate">Review community submissions and keep the marketplace fresh.</p><button className="btn btn-sm btn-yellow" onClick={seedDatabase} disabled={seeding}>{seeding ? 'Adding rentals…' : 'Add starter rentals'}</button></div>
+      <div className="flex gap-1 mb-6 border-b border-line overflow-x-auto">
+        {([['overview', 'Overview'], ['requests', `Scout requests${reqData?.requests?.filter((r: any) => r.status === 'open').length ? ` · ${reqData.requests.filter((r: any) => r.status === 'open').length}` : ''}`], ['payouts', 'Payouts'], ['listings', 'Listings'], ['team', 'Team']] as [typeof tab, string][]).map(([key, label]) => (
+          <button key={key} onClick={() => setTab(key)} className={`px-4 py-2 text-sm font-semibold whitespace-nowrap border-b-2 -mb-px transition-colors ${tab === key ? 'border-ink text-ink' : 'border-transparent text-slate hover:text-ink'}`}>{label}</button>
+        ))}
+      </div>
+
+      {tab === 'overview' && (<>
       <div className="grid gap-3 mb-8" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(120px,1fr))' }}>
         {Object.entries(data.metrics).map(([k, v]) => (
           <div key={k} className="sticker p-4">
@@ -214,10 +256,67 @@ function AdminBoard({ user }: { user: User }) {
         </div>
       </section>
 
+      </>)}
+
+      {tab === 'requests' && (
+        <section className="mb-8">
+          <div className="mb-4"><p className="section-label">Operations</p><h2 className="text-xl mt-1">Request-a-scout queue</h2><p className="text-xs text-slate mt-1">Assign a local scout to each renter request. The scout is notified in-app.</p></div>
+          {!reqData?.requests?.length ? <div className="sticker p-4 text-sm text-slate">No scout requests yet.</div> : (
+            <div className="grid gap-2">
+              {reqData.requests.map((r: any) => (
+                <div key={r.id} className="sticker p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-bold">{r.area} <span className={`badge ml-1 ${r.status === 'fulfilled' ? 'badge-green' : r.status === 'assigned' ? 'badge-accent' : r.status === 'closed' ? 'badge-ink' : 'badge-yellow'}`}>{r.status}</span></p>
+                      <p className="text-xs text-slate mt-1">{r.bhk !== 'any' ? `${r.bhk} BHK · ` : ''}{r.budgetMax ? `up to ₹${Number(r.budgetMax).toLocaleString('en-IN')}` : 'any budget'}{r.moveIn ? ` · ${r.moveIn}` : ''}</p>
+                      <p className="text-xs text-slate mt-0.5">Renter: {r.seekerEmail ?? r.seekerPhone ?? r.seekerId?.slice(0, 8)}</p>
+                      {r.notes && <p className="text-sm mt-1.5">“{r.notes}”</p>}
+                      {r.assignedScoutName && <p className="text-xs text-accent mt-1">Assigned to {r.assignedScoutName}</p>}
+                    </div>
+                    {(r.status === 'open' || r.status === 'assigned') && (
+                      <div className="flex flex-wrap gap-2 items-center">
+                        <select className="input !w-auto" value={assignPick[r.id] ?? ''} onChange={(e) => setAssignPick({ ...assignPick, [r.id]: e.target.value })}>
+                          <option value="">Pick a scout…</option>
+                          {(reqData.scouts ?? []).map((sc: any) => <option key={sc.id} value={sc.id}>{sc.name}{sc.trustScore != null ? ` (trust ${sc.trustScore})` : ''}</option>)}
+                        </select>
+                        <button className="btn btn-sm btn-primary" onClick={() => assignRequest(r.id)}>{r.status === 'assigned' ? 'Reassign' : 'Assign'}</button>
+                        <button className="btn btn-sm" onClick={() => closeRequest(r.id)}>Close</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {tab === 'team' && (
+        <section className="mb-8">
+          <div className="mb-4"><p className="section-label">Access control</p><h2 className="text-xl mt-1">Admin team</h2><p className="text-xs text-slate mt-1">Grant or revoke admin access by email. The user must have signed in at least once.</p></div>
+          <div className="sticker p-4 mb-4 flex flex-wrap gap-2 items-end">
+            <label className="text-xs font-bold flex-1 min-w-[200px]">User email<input className="input mt-1" type="email" value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} placeholder="person@example.com" /></label>
+            <button className="btn btn-sm btn-primary" onClick={() => teamAction('grant', grantEmail)}>Grant admin</button>
+          </div>
+          <div className="sticker divide-y divide-line">
+            {team.length === 0 ? <p className="text-sm text-slate p-4">No admins listed.</p> : team.map((a) => (
+              <div key={a.id} className="flex items-center justify-between gap-3 p-3.5 text-sm">
+                <div><p className="font-semibold">{a.fullName || a.email || a.id}</p>{a.email && a.fullName && <p className="text-xs text-slate">{a.email}</p>}</div>
+                <button className="btn btn-sm" onClick={() => a.email && teamAction('revoke', a.email)}>Revoke</button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {tab === 'payouts' && (<>
       <section className="mb-8"><div className="flex justify-between items-end mb-3"><div><p className="section-label">Scout wallet approvals</p><h2 className="text-xl mt-1">Pending earnings</h2></div><span className="text-xs text-slate">Approve only after checking the unlock.</span></div>{wallet?.rewards?.filter((r: any) => r.status === 'pending').length ? <div className="grid gap-2">{wallet.rewards.filter((r: any) => r.status === 'pending').map((r: any) => <div key={r.id} className="sticker p-3 flex flex-wrap gap-3 justify-between items-center"><div><p className="font-bold">₹{r.amount} pending for Scout {String(r.scoutId).slice(0, 12)}</p><p className="text-xs text-slate">Unlock {String(r.unlockTransactionId).slice(0, 10)} · awaiting payout approval</p></div><button className="btn btn-sm btn-yellow" onClick={() => walletAction('approve_reward', r.id)}>Approve to wallet</button></div>)}</div> : <div className="sticker p-4 text-sm text-slate">No Scout earnings awaiting approval.</div>}</section>
 
       <section className="mb-8"><div className="flex justify-between items-end mb-3"><div><p className="section-label">Payout requests</p><h2 className="text-xl mt-1">Scout withdrawals</h2></div><span className="text-xs text-slate">Pay out, then mark paid.</span></div>{wallet?.withdrawals?.filter((w: any) => w.status === 'requested').length ? <div className="grid gap-2">{wallet.withdrawals.filter((w: any) => w.status === 'requested').map((w: any) => <div key={w.id} className="sticker p-3 flex flex-wrap gap-3 justify-between items-center"><div><p className="font-bold">₹{Number(w.amount).toLocaleString('en-IN')} · Scout {String(w.scoutId).slice(0, 12)}</p><p className="text-xs text-slate">{w.method?.type?.toUpperCase()}: {w.method?.value} · requested {w.createdAt ? new Date(w.createdAt).toLocaleDateString('en-IN') : ''}</p></div><div className="flex gap-2"><button className="btn btn-sm btn-primary" onClick={() => withdrawalAction('mark_paid', w.id)}>Mark paid</button><button className="btn btn-sm" onClick={() => withdrawalAction('reject_withdrawal', w.id)}>Reject</button></div></div>)}</div> : <div className="sticker p-4 text-sm text-slate">No payout requests.</div>}</section>
 
+      </>)}
+
+      {tab === 'listings' && (
       <div className="sticker overflow-x-auto p-2">
         <table className="w-full text-sm">
           <thead>
@@ -270,6 +369,7 @@ function AdminBoard({ user }: { user: User }) {
           </tbody>
         </table>
       </div>
+      )}
     </>
   );
 }

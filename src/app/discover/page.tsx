@@ -247,8 +247,11 @@ export default function DiscoverPage() {
         <div className="panel p-10 text-center mt-2">
           <div className="w-12 h-12 rounded-xl bg-accentSoft text-accent flex items-center justify-center mx-auto mb-3"><SearchIcon className="w-6 h-6" /></div>
           <p className="text-lg font-semibold">No homes match these filters</p>
-          <p className="text-sm text-slate mt-1">Try widening your search, or submit a discovery as a scout.</p>
-          {chips.length > 0 && <button onClick={clearAll} className="btn btn-sm mt-4">Clear filters</button>}
+          <p className="text-sm text-slate mt-1">Try widening your search — or have a local scout go find one for you.</p>
+          <div className="flex flex-wrap gap-2 justify-center mt-4">
+            {chips.length > 0 && <button onClick={clearAll} className="btn btn-sm">Clear filters</button>}
+            <Link href="/request" className="btn btn-sm btn-primary">Request a scout →</Link>
+          </div>
         </div>
       )}
       </>)}

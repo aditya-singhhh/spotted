@@ -10,6 +10,7 @@ import TopBar from '@/components/TopBar';
 import ShortlistButton from '@/components/ShortlistButton';
 import { HomeIcon, MapPinIcon, WalletIcon, TrendingUpIcon, ShieldCheckIcon, SparkleIcon, SearchIcon } from '@/components/icons';
 import { readCache, writeCache, readRecentlyViewed, type RecentItem } from '@/lib/clientCache';
+import { STATUS_LABEL } from '@/lib/scoutRequests';
 
 export default function ProfilePage() {
   const [mode, setMode] = useState<'tenant' | 'scout'>('tenant');
@@ -27,6 +28,7 @@ export default function ProfilePage() {
       <AuthGate>{(user) => (
         <>
           <ProfileHeader user={user} mode={mode} />
+          <Notifications user={user} />
           {mode === 'scout' ? <Stats user={user} /> : <TenantView user={user} />}
         </>
       )}</AuthGate>
@@ -186,6 +188,101 @@ function TenantView({ user }: { user: User }) {
   );
 }
 
+// In-app notifications (both modes). This is how a scout "gets to know" they've
+// been assigned an area — pull-based for now; push/email is a later add.
+function Notifications({ user }: { user: User }) {
+  const [items, setItems] = useState<any[]>([]);
+  const [open, setOpen] = useState(false);
+
+  async function load() {
+    const token = await user.getIdToken();
+    const res = await fetch('/api/notifications', { headers: { Authorization: `Bearer ${token}` } }).catch(() => null);
+    if (res?.ok) setItems((await res.json()).notifications ?? []);
+  }
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [user]);
+  const unread = items.filter((n) => !n.read).length;
+
+  async function markAll() {
+    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    const token = await user.getIdToken();
+    fetch('/api/notifications', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ action: 'read_all' }) }).catch(() => {});
+  }
+
+  if (items.length === 0) return null;
+  return (
+    <div className="mb-6 animate-fade-up">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 text-sm font-semibold">
+        <SparkleIcon className="w-4 h-4 text-accent" /> Notifications
+        {unread > 0 && <span className="badge badge-accent">{unread} new</span>}
+        <span className="text-slate text-xs">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="panel divide-y divide-line mt-2">
+          {items.slice(0, 12).map((n) => (
+            <Link key={n.id} href={n.link || '#'} className={`block p-3 hover:bg-canvas ${!n.read ? 'bg-accentSoft/40' : ''}`}>
+              <p className="text-sm font-semibold">{n.title}</p>
+              <p className="text-xs text-slate mt-0.5">{n.body}</p>
+            </Link>
+          ))}
+          {unread > 0 && <button onClick={markAll} className="text-xs font-semibold text-accent p-3 w-full text-left">Mark all as read</button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Requests an admin has assigned to this scout, with a fulfil ("share listings") flow.
+function AssignedRequests({ user }: { user: User }) {
+  const [requests, setRequests] = useState<any[] | null>(null);
+  const [ids, setIds] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function load() {
+    const token = await user.getIdToken();
+    const res = await fetch('/api/scout-requests?view=assigned', { headers: { Authorization: `Bearer ${token}` } }).catch(() => null);
+    setRequests(res?.ok ? (await res.json()).requests ?? [] : []);
+  }
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [user]);
+
+  async function fulfill(id: string) {
+    const matchedListingIds = (ids[id] ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+    setBusy(id);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/scout-requests', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ action: 'fulfill', id, matchedListingIds }) });
+      if (res.ok) await load();
+    } finally { setBusy(null); }
+  }
+
+  if (!requests || requests.length === 0) return null;
+  return (
+    <section>
+      <SectionHead title="Areas assigned to you" count={requests.length} />
+      <div className="space-y-3">
+        {requests.map((r) => (
+          <div key={r.id} className="panel p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold flex items-center gap-1.5"><MapPinIcon className="w-4 h-4 text-slate" /> {r.area}</span>
+              <span className={`badge ${r.status === 'fulfilled' ? 'badge-green' : 'badge-accent'}`}>{STATUS_LABEL[r.status as keyof typeof STATUS_LABEL] ?? r.status}</span>
+            </div>
+            <p className="text-xs text-slate mt-1">{r.bhk !== 'any' ? `${r.bhk} BHK · ` : ''}{r.budgetMax ? `up to ${inr(r.budgetMax)}` : 'any budget'}{r.moveIn ? ` · move-in ${r.moveIn}` : ''}</p>
+            {r.notes && <p className="text-sm mt-2 text-ink/80">“{r.notes}”</p>}
+            {r.status !== 'fulfilled' ? (
+              <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                <input value={ids[r.id] ?? ''} onChange={(e) => setIds({ ...ids, [r.id]: e.target.value })} placeholder="Listing IDs you submitted, comma-separated" className="input flex-1" />
+                <button className="btn btn-sm btn-primary" onClick={() => fulfill(r.id)} disabled={busy === r.id}>{busy === r.id ? 'Sharing…' : 'Share with renter'}</button>
+              </div>
+            ) : (
+              <p className="text-xs text-green mt-2">Shared {Array.isArray(r.matchedListingIds) ? r.matchedListingIds.length : 0} listing(s) with the renter.</p>
+            )}
+            <p className="text-[11px] text-slate mt-2">Submit the homes on <Link href="/scout" className="underline">the scout form</Link> first, then paste their IDs here to share.</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Kpi({ icon, label, value }: { icon: ReactNode; label: string; value: ReactNode }) {
   return (
     <div className="panel p-4">
@@ -274,6 +371,8 @@ function Stats({ user }: { user: User }) {
           <p className="text-[11px] text-slate mt-2">Payouts are reviewed and settled by our team, usually within a few days.</p>
         </div>
       )}
+
+      <AssignedRequests user={user} />
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Kpi icon={<ShieldCheckIcon className="w-4 h-4" />} label="Verified discoveries" value={data.verifiedDiscoveries} />

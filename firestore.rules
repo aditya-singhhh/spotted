@@ -73,6 +73,18 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == resource.data.uid;
     }
 
+    // Scout requests: the renter who created it, or the scout it's assigned to,
+    // may read it. All writes go through server-side API routes.
+    match /scoutRequests/{id} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.seekerId || request.auth.uid == resource.data.assignedScoutId);
+    }
+
+    // In-app notifications: a user may read their own (writes are server-side).
+    match /notifications/{id} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.uid;
+    }
+
     // Everything else (properties, evidence, verifications, scoutRewards,
     // reports) is server-only.
     match /properties/{id} { allow read: if false; }
