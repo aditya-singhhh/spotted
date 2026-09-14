@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   try {
     const parsed = parseSubmission(await req.json());
     if ('error' in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
-    const { lat, lng, bhk, rent, deposit, landmark, ownerName, ownerPhone, notes, furnishing, bachelorAllowed, contactedOwner, availabilityConfirmed, mediaUrls, primaryMedia, mediaType, boardMediaUrls, boardMediaType, quality } = parsed.value;
+    const { lat, lng, bhk, rent, deposit, landmark, ownerName, ownerPhone, notes, furnishing, bachelorAllowed, contactedOwner, availabilityConfirmed, mediaUrls, primaryMedia, mediaType, boardMediaUrls, boardMediaType, details, amenities, quality } = parsed.value;
 
     const profile = await ensureProfile(uid, { phone: decoded.phone_number, email: decoded.email });
 
@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
       approxLat: round(lat), approxLng: round(lng),
       media: primaryMedia, mediaUrls, mediaType,
       contactedOwner, availabilityConfirmed,
+      details, amenities,
       status: 'pending', trustScore: quality, spottedAt: now, lastVerifiedAt: null, createdAt: now
     });
 

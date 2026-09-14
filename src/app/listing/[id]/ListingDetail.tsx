@@ -8,6 +8,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { CheckIcon, UnlockIcon, MapPinIcon, ShieldCheckIcon } from '@/components/icons';
 import ShortlistButton from '@/components/ShortlistButton';
 import { pushRecentlyViewed } from '@/lib/clientCache';
+import { detailRows } from '@/lib/listingDetails';
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
@@ -54,6 +55,8 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
 
   const gallery: string[] = Array.isArray(listing.mediaUrls) && listing.mediaUrls.length ? listing.mediaUrls : listing.media ? [listing.media] : [];
   const active = activeMedia ?? listing.media;
+  const rows = detailRows(listing.details);
+  const amenities: string[] = Array.isArray(listing.amenities) ? listing.amenities : [];
 
   return (
     <main className="max-w-5xl mx-auto px-5 pt-6 pb-12">
@@ -94,6 +97,30 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
             <Fact label="Furnishing" value={listing.furnishing || 'Unfurnished'} />
             <Fact label="Who can rent" value={listing.bachelorAllowed === 'yes' ? 'Bachelors OK' : listing.bachelorAllowed === 'no' ? 'Families only' : 'Ask the owner'} />
           </div>
+
+          {rows.length > 0 && (
+            <div>
+              <h2 className="text-lg mb-2">Property details</h2>
+              <div className="panel divide-y divide-line">
+                {rows.map(([k, v]) => (
+                  <div key={k} className="flex justify-between gap-3 px-4 py-2.5 text-sm">
+                    <span className="text-slate">{k}</span><span className="font-medium text-right">{v}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {amenities.length > 0 && (
+            <div>
+              <h2 className="text-lg mb-2">Amenities</h2>
+              <div className="panel p-4 grid grid-cols-2 sm:grid-cols-3 gap-y-2.5 gap-x-4">
+                {amenities.map((a: string) => (
+                  <span key={a} className="flex items-center gap-2 text-sm"><CheckIcon className="w-4 h-4 text-green shrink-0" /> {a}</span>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="panel p-4 bg-canvas border-dashed">
             <p className="section-label">Location protected</p>

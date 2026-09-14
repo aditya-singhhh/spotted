@@ -6,7 +6,7 @@ export const PUBLIC_STATUSES = ['verified', 'community'];
 // Explicit allowlist of fields safe to expose pre-unlock. NEVER spread the raw
 // doc — board media / owner contact must stay gated. `mediaUrls` here are the
 // public HOME photos only (board proof lives in the private/contact subdoc).
-const PUBLIC_FIELDS = ['bhk', 'rent', 'deposit', 'furnishing', 'bachelorAllowed', 'landmark', 'approxLat', 'approxLng', 'media', 'mediaUrls', 'mediaType', 'contactedOwner', 'availabilityConfirmed', 'status', 'trustScore', 'spottedAt', 'lastVerifiedAt', 'createdAt'] as const;
+const PUBLIC_FIELDS = ['bhk', 'rent', 'deposit', 'furnishing', 'bachelorAllowed', 'landmark', 'approxLat', 'approxLng', 'media', 'mediaUrls', 'mediaType', 'contactedOwner', 'availabilityConfirmed', 'details', 'amenities', 'status', 'trustScore', 'spottedAt', 'lastVerifiedAt', 'createdAt'] as const;
 
 function toPublic(id: string, data: Record<string, any>): Record<string, any> {
   const out: Record<string, any> = { id };

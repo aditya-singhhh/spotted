@@ -8,6 +8,7 @@ import { compressImage } from '@/lib/compressImage';
 import { getCurrentLocation, reverseGeocode, type LatLng } from '@/lib/geo';
 import type { User } from 'firebase/auth';
 import { MapPinIcon, PlusIcon, PlayIcon, XIcon, CheckIcon, LockIcon } from '@/components/icons';
+import { PROPERTY_TYPES, FACINGS, AGE_BANDS, WATER_SUPPLY, AMENITIES } from '@/lib/listingDetails';
 
 const neighbourhoods = [
   { label: 'HSR Layout', lat: 12.9116, lng: 77.6387 },
@@ -95,7 +96,12 @@ function ScoutForm({ user }: { user: User }) {
   const [bachelor, setBachelor] = useState<'yes' | 'no' | 'unknown'>('yes');
   const [contacted, setContacted] = useState<'yes' | 'no' | ''>('');
   const [availabilityConfirmed, setAvailabilityConfirmed] = useState(false);
+  const [details, setDetails] = useState<Record<string, string>>({});
+  const [amenities, setAmenities] = useState<string[]>([]);
+  const [showMore, setShowMore] = useState(false);
   const [notes, setNotes] = useState('');
+  const setD = (k: string, v: string) => setDetails((d) => ({ ...d, [k]: v }));
+  const toggleAmenity = (a: string) => setAmenities((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]));
   const [submitting, setSubmitting] = useState(false);
   const [stage, setStage] = useState('');
   const [done, setDone] = useState(false);
@@ -162,6 +168,8 @@ function ScoutForm({ user }: { user: User }) {
         contactedOwner: contacted,
         availabilityConfirmed,
         notes,
+        details,
+        amenities,
         mediaUrls: home.ok.map((u) => u.url),
         boardMediaUrls: board.ok.map((u) => u.url)
       })
@@ -331,6 +339,36 @@ function ScoutForm({ user }: { user: User }) {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="sm:col-span-2 rounded-xl border border-line">
+        <button type="button" onClick={() => setShowMore((v) => !v)} className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold">
+          <span>More details <span className="font-normal text-slate">(optional — improves your listing &amp; trust)</span></span>
+          <span className="text-slate">{showMore ? '▲' : '▼'}</span>
+        </button>
+        {showMore && (
+          <div className="px-4 pb-4 grid grid-cols-2 gap-3 border-t border-line pt-4">
+            <label className="text-xs font-bold">Property type<select className="input mt-1" value={details.propertyType ?? ''} onChange={(e) => setD('propertyType', e.target.value)}><option value="">Select</option>{PROPERTY_TYPES.map((t) => <option key={t}>{t}</option>)}</select></label>
+            <label className="text-xs font-bold">Built-up area (sq.ft)<input className="input mt-1" type="number" value={details.areaSqft ?? ''} onChange={(e) => setD('areaSqft', e.target.value)} /></label>
+            <label className="text-xs font-bold">Floor<input className="input mt-1" type="number" value={details.floor ?? ''} onChange={(e) => setD('floor', e.target.value)} /></label>
+            <label className="text-xs font-bold">Total floors<input className="input mt-1" type="number" value={details.totalFloors ?? ''} onChange={(e) => setD('totalFloors', e.target.value)} /></label>
+            <label className="text-xs font-bold">Facing<select className="input mt-1" value={details.facing ?? ''} onChange={(e) => setD('facing', e.target.value)}><option value="">Select</option>{FACINGS.map((f) => <option key={f}>{f}</option>)}</select></label>
+            <label className="text-xs font-bold">Age of property<select className="input mt-1" value={details.ageBand ?? ''} onChange={(e) => setD('ageBand', e.target.value)}><option value="">Select</option>{AGE_BANDS.map((a) => <option key={a}>{a}</option>)}</select></label>
+            <label className="text-xs font-bold">Bathrooms<input className="input mt-1" type="number" value={details.bathrooms ?? ''} onChange={(e) => setD('bathrooms', e.target.value)} /></label>
+            <label className="text-xs font-bold">Balconies<input className="input mt-1" type="number" value={details.balconies ?? ''} onChange={(e) => setD('balconies', e.target.value)} /></label>
+            <label className="text-xs font-bold">Maintenance (₹/mo)<input className="input mt-1" type="number" value={details.maintenance ?? ''} onChange={(e) => setD('maintenance', e.target.value)} /></label>
+            <label className="text-xs font-bold">Water supply<select className="input mt-1" value={details.waterSupply ?? ''} onChange={(e) => setD('waterSupply', e.target.value)}><option value="">Select</option>{WATER_SUPPLY.map((w) => <option key={w}>{w}</option>)}</select></label>
+            <label className="text-xs font-bold col-span-2">Available from<input className="input mt-1" type="date" value={details.availableFrom ?? ''} onChange={(e) => setD('availableFrom', e.target.value)} /></label>
+            <div className="col-span-2">
+              <p className="text-xs font-bold mb-2">Amenities</p>
+              <div className="flex flex-wrap gap-2">
+                {AMENITIES.map((a) => (
+                  <button key={a} type="button" onClick={() => toggleAmenity(a)} className={`text-xs font-medium rounded-full px-3 py-1.5 border transition-colors ${amenities.includes(a) ? 'bg-ink text-white border-ink' : 'border-line hover:bg-canvas'}`}>{a}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="sm:col-span-2">

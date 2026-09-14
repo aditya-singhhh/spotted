@@ -1,5 +1,6 @@
 import { submissionQuality, mediaKind, pickPrimaryMedia, type MediaKind } from './reward.ts';
 import { asString, asFiniteNumber, isLatLng, stringArray, inRange } from './validation.ts';
+import { parseDetails, type ListingDetails } from './listingDetails.ts';
 
 export type ParsedSubmission = {
   lat: number; lng: number; bhk: number; rent: number; deposit: number;
@@ -8,6 +9,7 @@ export type ParsedSubmission = {
   contactedOwner: 'yes' | 'no'; availabilityConfirmed: boolean;
   mediaUrls: string[]; primaryMedia: string | null; mediaType: MediaKind;
   boardMediaUrls: string[]; boardMediaType: MediaKind;
+  details: ListingDetails; amenities: string[];
   quality: number;
 };
 
@@ -55,6 +57,8 @@ export function parseSubmission(body: any): { error: string } | { value: ParsedS
     contactedOwner, availabilityConfirmed
   });
 
+  const { details, amenities } = parseDetails(body);
+
   return {
     value: {
       lat: lat!, lng: lng!, bhk: bhk!, rent: rent!, deposit,
@@ -62,6 +66,7 @@ export function parseSubmission(body: any): { error: string } | { value: ParsedS
       contactedOwner, availabilityConfirmed,
       mediaUrls, primaryMedia, mediaType: mediaKind(primaryMedia),
       boardMediaUrls, boardMediaType: mediaKind(pickPrimaryMedia(boardMediaUrls)),
+      details, amenities,
       quality: score
     }
   };
