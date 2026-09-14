@@ -19,14 +19,14 @@ export async function POST(req: NextRequest) {
   try {
     const parsed = parseSubmission(await req.json());
     if ('error' in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
-    const { lat, lng, bhk, rent, deposit, landmark, ownerName, ownerPhone, notes, furnishing, bachelorAllowed, contactedOwner, availabilityConfirmed, mediaUrls, primaryMedia, quality, mediaType } = parsed.value;
+    const { lat, lng, bhk, rent, deposit, landmark, ownerName, ownerPhone, notes, furnishing, bachelorAllowed, contactedOwner, availabilityConfirmed, mediaUrls, primaryMedia, mediaType, boardMediaUrls, boardMediaType, quality } = parsed.value;
 
     const profile = await ensureProfile(uid, { phone: decoded.phone_number, email: decoded.email });
 
     const scoutRef = adminDb.collection('scouts').doc(uid);
     const scoutSnap = await scoutRef.get();
     if (!scoutSnap.exists) {
-      await scoutRef.set({ trustScore: 60, totalEarned: 0, availableEarnings: 0, pendingEarnings: 0, createdAt: new Date().toISOString() });
+      await scoutRef.set({ trustScore: 60, totalEarned: 0, availableEarnings: 0, pendingEarnings: 0, withdrawnEarnings: 0, createdAt: new Date().toISOString() });
       if (profile?.role !== 'admin') {
         await adminDb.collection('users').doc(uid).set({ role: 'scout' }, { merge: true });
       }
@@ -49,12 +49,13 @@ export async function POST(req: NextRequest) {
     });
 
     await roRef.collection('private').doc('contact').set({
-      ownerName, ownerPhone, exactLat: lat, exactLng: lng, addressExact: landmark, notes
+      ownerName, ownerPhone, exactLat: lat, exactLng: lng, addressExact: landmark, notes,
+      boardMediaUrls, boardMediaType
     });
 
     await Promise.all(
-      mediaUrls.map((url) =>
-        adminDb.collection('evidence').add({ rentalOpportunityId: roRef.id, photoUrl: url, mediaType: mediaKind(url), uploadedBy: uid, createdAt: now })
+      [...mediaUrls, ...boardMediaUrls].map((url) =>
+        adminDb.collection('evidence').add({ rentalOpportunityId: roRef.id, photoUrl: url, mediaType: mediaKind(url), kind: boardMediaUrls.includes(url) ? 'board' : 'home', uploadedBy: uid, createdAt: now })
       )
     );
 

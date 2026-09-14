@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type Dispatch, type SetStateAction } from 'react';
 import AuthGate from '@/components/AuthGate';
 import { auth } from '@/lib/firebaseClient';
 import { uploadToCloudinary, type UploadedMedia } from '@/lib/cloudinary';
 import { compressImage } from '@/lib/compressImage';
 import { getCurrentLocation, reverseGeocode, type LatLng } from '@/lib/geo';
 import type { User } from 'firebase/auth';
-import { MapPinIcon, PlusIcon, PlayIcon, XIcon, CheckIcon } from '@/components/icons';
+import { MapPinIcon, PlusIcon, PlayIcon, XIcon, CheckIcon, LockIcon } from '@/components/icons';
 
 const neighbourhoods = [
   { label: 'HSR Layout', lat: 12.9116, lng: 77.6387 },
@@ -45,13 +45,47 @@ export default function ScoutSubmitPage() {
   );
 }
 
+type MediaItem = { file: File; url: string; video: boolean };
+
+function MediaPicker({ items, setItems, max }: { items: MediaItem[]; setItems: Dispatch<SetStateAction<MediaItem[]>>; max: number }) {
+  function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? []);
+    if (!picked.length) return;
+    setItems((prev) => [...prev, ...picked.slice(0, max - prev.length).map((file) => ({ file, url: URL.createObjectURL(file), video: file.type.startsWith('video') }))]);
+    e.target.value = '';
+  }
+  function remove(i: number) {
+    setItems((prev) => { URL.revokeObjectURL(prev[i]?.url); return prev.filter((_, x) => x !== i); });
+  }
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+      {items.map((m, i) => (
+        <div key={m.url} className="relative aspect-square rounded-xl overflow-hidden border border-line bg-canvas">
+          {m.video ? <video src={m.url} className="w-full h-full object-cover" muted playsInline /> : <img src={m.url} alt="" className="w-full h-full object-cover" />}
+          {m.video && <span className="absolute bottom-1 left-1 badge badge-ink !px-1.5 !py-0.5 text-[9px]"><PlayIcon className="w-2.5 h-2.5" /> video</span>}
+          <button type="button" aria-label="Remove" onClick={() => remove(i)} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-ink text-paper flex items-center justify-center"><XIcon className="w-3.5 h-3.5" /></button>
+        </div>
+      ))}
+      {items.length < max && (
+        <label className="aspect-square rounded-xl border-2 border-dashed border-line bg-canvas flex flex-col items-center justify-center text-center cursor-pointer hover:border-accent hover:bg-accentSoft transition-colors">
+          <PlusIcon className="w-6 h-6" />
+          <span className="text-[10px] font-bold mt-1">Add</span>
+          <input type="file" accept="image/*,video/*" multiple className="hidden" onChange={onFiles} />
+        </label>
+      )}
+    </div>
+  );
+}
+
 function ScoutForm({ user }: { user: User }) {
   const [loc, setLoc] = useState<LatLng | null>(null);
   const [placeName, setPlaceName] = useState('');
   const [locating, setLocating] = useState(false);
-  const [media, setMedia] = useState<{ file: File; url: string; video: boolean }[]>([]);
+  const [homeMedia, setHomeMedia] = useState<MediaItem[]>([]);
+  const [boardMedia, setBoardMedia] = useState<MediaItem[]>([]);
   const [photoError, setPhotoError] = useState('');
-  const MAX_MEDIA = 6;
+  const MAX_HOME = 8;
+  const MAX_BOARD = 3;
   const [bhk, setBhk] = useState(1);
   const [rent, setRent] = useState('');
   const [deposit, setDeposit] = useState('');
@@ -80,28 +114,6 @@ function ScoutForm({ user }: { user: User }) {
     }
   }
 
-  function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
-    const picked = Array.from(e.target.files ?? []);
-    if (!picked.length) return;
-    setPhotoError('');
-    setMedia((prev) => [
-      ...prev,
-      ...picked.slice(0, MAX_MEDIA - prev.length).map((file) => ({
-        file,
-        url: URL.createObjectURL(file),
-        video: file.type.startsWith('video')
-      }))
-    ]);
-    e.target.value = '';
-  }
-
-  function removeMedia(index: number) {
-    setMedia((prev) => {
-      URL.revokeObjectURL(prev[index]?.url);
-      return prev.filter((_, i) => i !== index);
-    });
-  }
-
   function chooseNeighbourhood(value: string) {
     const area = neighbourhoods.find((item) => item.label === value);
     if (!area) return;
@@ -121,12 +133,16 @@ function ScoutForm({ user }: { user: User }) {
 
     // Uploads happen only now (on submit), not on file-select. A failed upload
     // is skipped rather than blocking a legitimate discovery.
-    if (media.length) setStage('Optimising & uploading media…');
-    const settled = await Promise.allSettled(media.map(async (m) => uploadToCloudinary(await compressImage(m.file), token)));
-    const uploaded = settled.filter((s): s is PromiseFulfilledResult<UploadedMedia> => s.status === 'fulfilled').map((s) => s.value);
-    if (settled.some((s) => s.status === 'rejected')) {
-      setPhotoError('Some files could not be uploaded and were skipped. Your discovery can still be submitted.');
+    async function uploadAll(list: MediaItem[]) {
+      const settled = await Promise.allSettled(list.map(async (m) => uploadToCloudinary(await compressImage(m.file), token)));
+      const ok = settled.filter((s): s is PromiseFulfilledResult<UploadedMedia> => s.status === 'fulfilled').map((s) => s.value);
+      return { ok, failed: settled.some((s) => s.status === 'rejected') };
     }
+    if (homeMedia.length || boardMedia.length) setStage('Optimising & uploading media…');
+    const home = await uploadAll(homeMedia);
+    const board = await uploadAll(boardMedia);
+    if (home.failed || board.failed) setPhotoError('Some files could not be uploaded and were skipped. Your discovery can still be submitted.');
+    const uploaded = [...home.ok, ...board.ok];
 
     setStage('Saving your discovery…');
     const res = await fetch('/api/scout/submit', {
@@ -146,7 +162,8 @@ function ScoutForm({ user }: { user: User }) {
         contactedOwner: contacted,
         availabilityConfirmed,
         notes,
-        mediaUrls: uploaded.map((u) => u.url)
+        mediaUrls: home.ok.map((u) => u.url),
+        boardMediaUrls: board.ok.map((u) => u.url)
       })
     });
     setSubmitting(false);
@@ -180,27 +197,15 @@ function ScoutForm({ user }: { user: User }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <div className="sm:col-span-2">
-        <label className="text-xs font-bold block mb-1">Photos &amp; videos of the TO-LET board</label>
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-          {media.map((m, i) => (
-            <div key={m.url} className="relative aspect-square rounded-xl overflow-hidden border border-line bg-canvas">
-              {m.video
-                ? <video src={m.url} className="w-full h-full object-cover" muted playsInline />
-                : <img src={m.url} alt="" className="w-full h-full object-cover" />}
-              {m.video && <span className="absolute bottom-1 left-1 badge badge-ink !px-1.5 !py-0.5 text-[9px]"><PlayIcon className="w-2.5 h-2.5" /> video</span>}
-              <button type="button" aria-label="Remove" onClick={() => removeMedia(i)}
-                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-ink text-paper flex items-center justify-center"><XIcon className="w-3.5 h-3.5" /></button>
-            </div>
-          ))}
-          {media.length < MAX_MEDIA && (
-            <label className="aspect-square rounded-xl border-2 border-dashed border-line bg-canvas flex flex-col items-center justify-center text-center cursor-pointer hover:border-accent hover:bg-accentSoft transition-colors">
-              <PlusIcon className="w-6 h-6" />
-              <span className="text-[10px] font-bold mt-1">Add media</span>
-              <input type="file" accept="image/*,video/*" multiple className="hidden" onChange={onFiles} />
-            </label>
-          )}
-        </div>
-        <p className="text-[11px] text-slate mt-1">Add up to {MAX_MEDIA}. A short video earns the most, then clear photos — the more you add, the higher your reward.</p>
+        <label className="text-xs font-bold block mb-1">Photos &amp; videos of the home <span className="font-normal text-slate">(shown publicly)</span></label>
+        <MediaPicker items={homeMedia} setItems={setHomeMedia} max={MAX_HOME} />
+        <p className="text-[11px] text-slate mt-1">Up to {MAX_HOME}. These appear on the listing for everyone — do not include the owner&apos;s number here.</p>
+      </div>
+
+      <div className="sm:col-span-2 rounded-xl border border-line bg-canvas p-3">
+        <label className="text-xs font-bold flex items-center gap-1.5 mb-1"><LockIcon className="w-3.5 h-3.5 text-accent" /> Photo / video of the TO-LET board <span className="font-normal text-slate">(hidden until unlock)</span></label>
+        <MediaPicker items={boardMedia} setItems={setBoardMedia} max={MAX_BOARD} />
+        <p className="text-[11px] text-slate mt-1">The board usually shows the owner&apos;s number — kept private and revealed only to renters who unlock. Strong proof boosts your trust score &amp; reward.</p>
         {photoError && <p className="text-xs text-red mt-1">{photoError}</p>}
       </div>
 

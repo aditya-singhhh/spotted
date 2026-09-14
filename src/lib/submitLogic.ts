@@ -6,7 +6,9 @@ export type ParsedSubmission = {
   landmark: string | null; ownerName: string | null; ownerPhone: string;
   notes: string | null; furnishing: string; bachelorAllowed: string;
   contactedOwner: 'yes' | 'no'; availabilityConfirmed: boolean;
-  mediaUrls: string[]; primaryMedia: string | null; quality: number; mediaType: MediaKind;
+  mediaUrls: string[]; primaryMedia: string | null; mediaType: MediaKind;
+  boardMediaUrls: string[]; boardMediaType: MediaKind;
+  quality: number;
 };
 
 // Validates + normalises a raw scout-submission body into the exact shape the
@@ -39,10 +41,16 @@ export function parseSubmission(body: any): { error: string } | { value: ParsedS
   const furnishing = asString(body?.furnishing, 40) ?? 'unfurnished';
   const bachelorAllowed = ['yes', 'no', 'unknown'].includes(body?.bachelorAllowed) ? body.bachelorAllowed : 'unknown';
 
+  // Home/property media is PUBLIC (drives browsing). Board/proof media is GATED
+  // (it usually shows the owner's number) — stored privately, revealed on unlock.
   const mediaUrls = stringArray(body?.mediaUrls).filter((u) => mediaKind(u) !== 'none');
+  const boardMediaUrls = stringArray(body?.boardMediaUrls).filter((u) => mediaKind(u) !== 'none');
   const primaryMedia = pickPrimaryMedia(mediaUrls);
-  const { score, media } = submissionQuality({
-    media: primaryMedia, extraMedia: Math.max(0, mediaUrls.length - 1),
+
+  // Quality scores on all evidence (home + board proof).
+  const allMedia = [...mediaUrls, ...boardMediaUrls];
+  const { score } = submissionQuality({
+    media: pickPrimaryMedia(allMedia), extraMedia: Math.max(0, allMedia.length - 1),
     ownerName, ownerPhone, deposit, notes, furnishing, bachelorAllowed, landmark,
     contactedOwner, availabilityConfirmed
   });
@@ -52,7 +60,9 @@ export function parseSubmission(body: any): { error: string } | { value: ParsedS
       lat: lat!, lng: lng!, bhk: bhk!, rent: rent!, deposit,
       landmark, ownerName, ownerPhone, notes, furnishing, bachelorAllowed,
       contactedOwner, availabilityConfirmed,
-      mediaUrls, primaryMedia, quality: score, mediaType: media
+      mediaUrls, primaryMedia, mediaType: mediaKind(primaryMedia),
+      boardMediaUrls, boardMediaType: mediaKind(pickPrimaryMedia(boardMediaUrls)),
+      quality: score
     }
   };
 }

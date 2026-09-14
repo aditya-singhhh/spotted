@@ -7,6 +7,7 @@ import { auth } from '@/lib/firebaseClient';
 import { onAuthStateChanged } from 'firebase/auth';
 import { CheckIcon, UnlockIcon, MapPinIcon, ShieldCheckIcon } from '@/components/icons';
 import ShortlistButton from '@/components/ShortlistButton';
+import { pushRecentlyViewed } from '@/lib/clientCache';
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
@@ -26,7 +27,8 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
 
   useEffect(() => {
     fetch('/api/settings').then((r) => r.json()).then((d) => setUnlockPrice(d.unlockPrice || 29)).catch(() => {});
-  }, []);
+    pushRecentlyViewed({ id, bhk: listing.bhk, rent: listing.rent, landmark: listing.landmark, media: listing.media });
+  }, [id, listing]);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -143,6 +145,18 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
                   <p className="text-sm mt-3 flex items-center gap-1.5"><MapPinIcon className="w-4 h-4 shrink-0 text-slate" /> {unlocked.location.address || 'Exact location unlocked'}</p>
                   {typeof unlocked.location.lat === 'number' && typeof unlocked.location.lng === 'number' && (
                     <a className="btn btn-sm btn-dark w-full mt-3" href={`https://www.google.com/maps/search/?api=1&query=${unlocked.location.lat},${unlocked.location.lng}`} target="_blank" rel="noopener noreferrer"><MapPinIcon className="w-4 h-4" /> Open in Google Maps</a>
+                  )}
+                  {Array.isArray(unlocked.board) && unlocked.board.length > 0 && (
+                    <div className="mt-4">
+                      <p className="section-label mb-2">TO‑LET board proof</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {unlocked.board.map((u: string) => (
+                          <a key={u} href={u} target="_blank" rel="noopener noreferrer" className="relative aspect-square rounded-lg overflow-hidden border border-line bg-canvas block">
+                            <Media url={u} className="w-full h-full object-cover" emojiClassName="flex items-center justify-center w-full h-full" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               )}

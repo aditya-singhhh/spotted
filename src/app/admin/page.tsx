@@ -119,6 +119,18 @@ function AdminBoard({ user }: { user: User }) {
     } catch { setWallet(prevWallet); setError('Wallet action failed.'); }
   }
 
+  async function withdrawalAction(action: 'mark_paid' | 'reject_withdrawal', withdrawalId: string) {
+    setError('');
+    const prevWallet = wallet;
+    const nextStatus = action === 'mark_paid' ? 'paid' : 'rejected';
+    setWallet((w: any) => ({ ...w, withdrawals: (w.withdrawals ?? []).map((x: any) => (x.id === withdrawalId ? { ...x, status: nextStatus } : x)) }));
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/admin/wallet', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ action, withdrawalId }) });
+      if (!res.ok) throw new Error();
+    } catch { setWallet(prevWallet); setError('Withdrawal action failed.'); }
+  }
+
   if (error && !data) return <div className="sticker bg-redSoft p-5"><p className="font-bold">Admin access is not ready.</p><p className="text-sm text-red mt-2">{error}</p><p className="text-xs text-slate mt-3">Sign in through /login with your configured admin email, then refresh this page.</p></div>;
   if (!data) return <p className="text-sm text-slate-500">Loading…</p>;
 
@@ -137,6 +149,8 @@ function AdminBoard({ user }: { user: User }) {
       <section className="sticker p-4 mb-6"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="section-label">Marketplace pricing</p><h2 className="text-xl mt-1">Contact unlock price</h2></div><div className="flex gap-2 items-center"><span className="font-mono">₹</span><input className="input w-24" type="number" value={price} onChange={e => setPrice(e.target.value)} /><button className="btn btn-sm btn-primary" onClick={() => walletAction('set_price')}>Save</button></div></div><p className="text-xs text-slate mt-3">A Scout earns 50% of each confirmed unlock. Payment collection is demo-mode until a payment gateway is connected.</p></section>
 
       <section className="mb-8"><div className="flex justify-between items-end mb-3"><div><p className="section-label">Scout wallet approvals</p><h2 className="text-xl mt-1">Pending earnings</h2></div><span className="text-xs text-slate">Approve only after checking the unlock.</span></div>{wallet?.rewards?.filter((r: any) => r.status === 'pending').length ? <div className="grid gap-2">{wallet.rewards.filter((r: any) => r.status === 'pending').map((r: any) => <div key={r.id} className="sticker p-3 flex flex-wrap gap-3 justify-between items-center"><div><p className="font-bold">₹{r.amount} pending for Scout {String(r.scoutId).slice(0, 12)}</p><p className="text-xs text-slate">Unlock {String(r.unlockTransactionId).slice(0, 10)} · awaiting payout approval</p></div><button className="btn btn-sm btn-yellow" onClick={() => walletAction('approve_reward', r.id)}>Approve to wallet</button></div>)}</div> : <div className="sticker p-4 text-sm text-slate">No Scout earnings awaiting approval.</div>}</section>
+
+      <section className="mb-8"><div className="flex justify-between items-end mb-3"><div><p className="section-label">Payout requests</p><h2 className="text-xl mt-1">Scout withdrawals</h2></div><span className="text-xs text-slate">Pay out, then mark paid.</span></div>{wallet?.withdrawals?.filter((w: any) => w.status === 'requested').length ? <div className="grid gap-2">{wallet.withdrawals.filter((w: any) => w.status === 'requested').map((w: any) => <div key={w.id} className="sticker p-3 flex flex-wrap gap-3 justify-between items-center"><div><p className="font-bold">₹{Number(w.amount).toLocaleString('en-IN')} · Scout {String(w.scoutId).slice(0, 12)}</p><p className="text-xs text-slate">{w.method?.type?.toUpperCase()}: {w.method?.value} · requested {w.createdAt ? new Date(w.createdAt).toLocaleDateString('en-IN') : ''}</p></div><div className="flex gap-2"><button className="btn btn-sm btn-primary" onClick={() => withdrawalAction('mark_paid', w.id)}>Mark paid</button><button className="btn btn-sm" onClick={() => withdrawalAction('reject_withdrawal', w.id)}>Reject</button></div></div>)}</div> : <div className="sticker p-4 text-sm text-slate">No payout requests.</div>}</section>
 
       <div className="sticker overflow-x-auto p-2">
         <table className="w-full text-sm">

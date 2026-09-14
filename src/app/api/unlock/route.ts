@@ -64,7 +64,8 @@ export async function POST(req: NextRequest) {
         tx.set(adminDb.collection('scoutRewards').doc(), { scoutId: opportunity.scoutId, unlockTransactionId: txnRef.id, amount: reward, status: 'pending', createdAt: now });
         if (scoutSnap!.exists) {
           const s = scoutSnap!.data()!;
-          tx.update(scoutRef, { pendingEarnings: (s.pendingEarnings ?? 0) + reward, totalEarned: (s.totalEarned ?? 0) + reward });
+          // Credit pending only; totalEarned is credited when admin approves the payout.
+          tx.update(scoutRef, { pendingEarnings: (s.pendingEarnings ?? 0) + reward });
         }
       }
     });
@@ -81,7 +82,8 @@ export async function POST(req: NextRequest) {
         lat: contact.exactLat,
         lng: contact.exactLng,
         address: contact.addressExact
-      }
+      },
+      board: Array.isArray(contact.boardMediaUrls) ? contact.boardMediaUrls : []
     });
   } catch (error) {
     captureError('unlock', error, { uid, rentalOpportunityId });
@@ -110,7 +112,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       unlocked: true,
       owner: { name: contact.ownerName ?? null, phone: contact.ownerPhone ?? null },
-      location: { lat: contact.exactLat, lng: contact.exactLng, address: contact.addressExact }
+      location: { lat: contact.exactLat, lng: contact.exactLng, address: contact.addressExact },
+      board: Array.isArray(contact.boardMediaUrls) ? contact.boardMediaUrls : []
     });
   } catch (error) {
     captureError('unlock.status', error, { uid: decoded.uid, id });

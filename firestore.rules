@@ -52,6 +52,16 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == resource.data.uid;
     }
 
+    // A scout may read their own withdrawal requests (writes are server-side).
+    match /withdrawals/{id} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.scoutId;
+    }
+
+    // A user may read their own saved searches (writes are server-side).
+    match /savedSearches/{id} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.uid;
+    }
+
     // Everything else (properties, evidence, verifications, scoutRewards,
     // reports) is server-only.
     match /properties/{id} { allow read: if false; }

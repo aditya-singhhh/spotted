@@ -8,25 +8,31 @@ export async function GET(req: NextRequest) {
   if (!decoded) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
   const uid = decoded.uid;
 
-  // Run the three independent reads in parallel — sequential awaits were the
-  // main source of the dashboard's load latency.
-  const [scoutSnap, subsSnap, rewardsSnap] = await Promise.all([
+  // Independent reads in parallel — sequential awaits were the main latency source.
+  const [scoutSnap, subsSnap, rewardsSnap, withdrawalsSnap] = await Promise.all([
     adminDb.collection('scouts').doc(uid).get(),
     adminDb.collection('rentalOpportunities').where('scoutId', '==', uid).get(),
-    adminDb.collection('scoutRewards').where('scoutId', '==', uid).get()
+    adminDb.collection('scoutRewards').where('scoutId', '==', uid).get(),
+    adminDb.collection('withdrawals').where('scoutId', '==', uid).get()
   ]);
 
   const scout = scoutSnap.exists
     ? scoutSnap.data()
-    : { trustScore: 60, totalEarned: 0, availableEarnings: 0, pendingEarnings: 0 };
+    : { trustScore: 60, totalEarned: 0, availableEarnings: 0, pendingEarnings: 0, withdrawnEarnings: 0 };
 
   const submissions = subsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
   const verifiedDiscoveries = submissions.filter((s: any) => s.status === 'verified').length;
+  const rewards = rewardsSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a: any, b: any) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')));
+  const withdrawals = withdrawalsSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a: any, b: any) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')));
 
   return NextResponse.json({
     scout,
     verifiedDiscoveries,
     successfulConnections: rewardsSnap.size,
-    submissions
+    submissions,
+    rewards,
+    withdrawals
   });
 }

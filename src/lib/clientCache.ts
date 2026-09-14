@@ -18,3 +18,17 @@ export function writeCache(key: string, data: unknown) {
     /* ignore quota / private-mode errors */
   }
 }
+
+// Recently-viewed listings (per-browser), newest first, capped.
+export type RecentItem = { id: string; bhk: number; rent: number; landmark: string; media?: string | null };
+const RV_KEY = 'recentlyViewed';
+
+export function readRecentlyViewed(): RecentItem[] {
+  return readCache<RecentItem[]>(RV_KEY) ?? [];
+}
+
+export function pushRecentlyViewed(item: RecentItem) {
+  const list = readRecentlyViewed().filter((x) => x.id !== item.id);
+  list.unshift(item);
+  writeCache(RV_KEY, list.slice(0, 12));
+}

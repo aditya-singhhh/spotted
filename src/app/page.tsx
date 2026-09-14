@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import Media from '@/components/Media';
+import CardMedia from '@/components/CardMedia';
 import ShortlistButton from '@/components/ShortlistButton';
 import Reveal from '@/components/Reveal';
 import { CheckIcon, SearchIcon, MapPinIcon, ShieldCheckIcon, SparkleIcon, TrendingUpIcon } from '@/components/icons';
@@ -125,7 +125,7 @@ function FeaturedCard({ l, delay }: { l: any; delay: number }) {
   return (
     <Link href={`/listing/${l.id}`} style={{ animationDelay: `${delay}ms` }} className="panel panel-hover overflow-hidden group animate-fade-up">
       <div className="relative h-44 bg-accentSoft overflow-hidden">
-        <Media url={l.media} emoji={l.photo || '🏠'} alt={`${l.bhk} BHK in ${l.landmark}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" emojiClassName="absolute inset-0 flex items-center justify-center text-5xl" />
+        <CardMedia urls={l.mediaUrls} cover={l.media} alt={`${l.bhk} BHK in ${l.landmark}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" emojiClassName="absolute inset-0 flex items-center justify-center text-5xl" />
         <span className={`badge absolute top-3 right-3 ${l.status === 'verified' ? 'badge-green' : 'badge-yellow'}`}>{l.status === 'verified' ? <><CheckIcon className="w-3 h-3" /> Verified</> : 'Community'}</span>
         <ShortlistButton id={l.id} className="absolute top-2.5 left-2.5 bg-paper/90 backdrop-blur rounded-full p-1.5 border border-line shadow-offsetSm press" />
       </div>

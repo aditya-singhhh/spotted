@@ -6,11 +6,16 @@ async function admin(req: NextRequest) { const user = await getUserFromRequest(r
 
 export async function GET(req: NextRequest) {
   if (!await admin(req)) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-  const [settings, rewards] = await Promise.all([
+  const [settings, rewards, withdrawals] = await Promise.all([
     adminDb.collection('platformSettings').doc('marketplace').get(),
-    adminDb.collection('scoutRewards').orderBy('createdAt', 'desc').limit(100).get()
+    adminDb.collection('scoutRewards').orderBy('createdAt', 'desc').limit(100).get(),
+    adminDb.collection('withdrawals').orderBy('createdAt', 'desc').limit(100).get()
   ]);
-  return NextResponse.json({ unlockPrice: Number(settings.data()?.unlockPrice ?? 29), rewards: rewards.docs.map(d => ({ id: d.id, ...d.data() })) });
+  return NextResponse.json({
+    unlockPrice: Number(settings.data()?.unlockPrice ?? 29),
+    rewards: rewards.docs.map((d) => ({ id: d.id, ...d.data() })),
+    withdrawals: withdrawals.docs.map((d) => ({ id: d.id, ...d.data() }))
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -35,10 +40,39 @@ export async function POST(req: NextRequest) {
       const scout = await tx.get(scoutRef);
       const current = scout.data() ?? {};
       tx.update(ref, { status: 'available', approvedAt: new Date().toISOString(), approvedBy: user.uid });
-      tx.set(scoutRef, { pendingEarnings: Math.max(0, Number(current.pendingEarnings ?? 0) - Number(data.amount)), availableEarnings: Number(current.availableEarnings ?? 0) + Number(data.amount) }, { merge: true });
+      tx.set(scoutRef, {
+        pendingEarnings: Math.max(0, Number(current.pendingEarnings ?? 0) - Number(data.amount)),
+        availableEarnings: Number(current.availableEarnings ?? 0) + Number(data.amount),
+        totalEarned: Number(current.totalEarned ?? 0) + Number(data.amount)
+      }, { merge: true });
       return true;
     });
     if (!ok) return NextResponse.json({ error: 'Reward is unavailable or already approved.' }, { status: 400 });
+    return NextResponse.json({ success: true });
+  }
+
+  if (body.action === 'mark_paid' || body.action === 'reject_withdrawal') {
+    const wRef = adminDb.collection('withdrawals').doc(body.withdrawalId);
+    const ok = await adminDb.runTransaction(async (tx) => {
+      const w = await tx.get(wRef);
+      if (!w.exists || w.data()?.status !== 'requested') return false;
+      const d = w.data()!;
+      if (body.action === 'mark_paid') {
+        const scoutRef = adminDb.collection('scouts').doc(d.scoutId);
+        const scout = await tx.get(scoutRef);
+        const cur = scout.data() ?? {};
+        tx.update(wRef, { status: 'paid', paidAt: new Date().toISOString(), paidBy: user.uid });
+        tx.set(scoutRef, { withdrawnEarnings: Number(cur.withdrawnEarnings ?? 0) + Number(d.amount) }, { merge: true });
+      } else {
+        const scoutRef = adminDb.collection('scouts').doc(d.scoutId);
+        const scout = await tx.get(scoutRef);
+        const cur = scout.data() ?? {};
+        tx.update(wRef, { status: 'rejected', rejectedAt: new Date().toISOString(), rejectedBy: user.uid });
+        tx.set(scoutRef, { availableEarnings: Number(cur.availableEarnings ?? 0) + Number(d.amount) }, { merge: true });
+      }
+      return true;
+    });
+    if (!ok) return NextResponse.json({ error: 'Withdrawal unavailable or already processed.' }, { status: 400 });
     return NextResponse.json({ success: true });
   }
   return NextResponse.json({ error: 'Unknown wallet action.' }, { status: 400 });

@@ -1,14 +1,15 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import Media from '@/components/Media';
+import CardMedia from '@/components/CardMedia';
 import { getCurrentLocation, reverseGeocode } from '@/lib/geo';
 import { MapPinIcon, CheckIcon, SearchIcon, XIcon, ShieldCheckIcon } from '@/components/icons';
 import ShortlistButton from '@/components/ShortlistButton';
 import ListingsMap from '@/components/ListingsMap';
 import { readCache, writeCache } from '@/lib/clientCache';
+import { auth } from '@/lib/firebaseClient';
 
-type Listing = { id: string; bhk: number; rent: number; deposit: number; furnishing: string; bachelorAllowed: string; status: string; trustScore: number; landmark: string; kmAway?: number; photo?: string; media?: string | null; beds?: string; freshness?: string; spottedAt?: string; approxLat?: number; approxLng?: number };
+type Listing = { id: string; bhk: number; rent: number; deposit: number; furnishing: string; bachelorAllowed: string; status: string; trustScore: number; landmark: string; kmAway?: number; photo?: string; media?: string | null; mediaUrls?: string[]; beds?: string; freshness?: string; spottedAt?: string; approxLat?: number; approxLng?: number };
 type Sort = 'fresh' | 'priceLow' | 'priceHigh' | 'trust';
 
 export default function DiscoverPage() {
@@ -21,8 +22,13 @@ export default function DiscoverPage() {
   const [bhk, setBhk] = useState('');
   const [budget, setBudget] = useState('');
   const [bachelors, setBachelors] = useState(false);
+  const [minBudget, setMinBudget] = useState('');
+  const [furnishing, setFurnishing] = useState('');
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [sort, setSort] = useState<Sort>('fresh');
   const [view, setView] = useState<'list' | 'map'>('list');
+  const [savedFlash, setSavedFlash] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   async function load(lat?: number, lng?: number) {
     setLoadError('');
@@ -66,8 +72,11 @@ export default function DiscoverPage() {
     let r = listings.filter((l) =>
       (!query || l.landmark.toLowerCase().includes(query.toLowerCase())) &&
       (!bhk || l.bhk === Number(bhk)) &&
+      (!minBudget || l.rent >= Number(minBudget)) &&
       (!budget || l.rent <= Number(budget)) &&
-      (!bachelors || l.bachelorAllowed === 'yes'));
+      (!furnishing || (l.furnishing ?? '').toLowerCase() === furnishing) &&
+      (!bachelors || l.bachelorAllowed === 'yes') &&
+      (!verifiedOnly || l.status === 'verified'));
     const by: Record<Sort, (a: Listing, b: Listing) => number> = {
       fresh: () => 0,
       priceLow: (a, b) => a.rent - b.rent,
@@ -75,14 +84,33 @@ export default function DiscoverPage() {
       trust: (a, b) => (b.trustScore ?? 0) - (a.trustScore ?? 0)
     };
     return sort === 'fresh' ? r : [...r].sort(by[sort]);
-  }, [listings, query, bhk, budget, bachelors, sort]);
+  }, [listings, query, bhk, minBudget, budget, furnishing, bachelors, verifiedOnly, sort]);
 
   const chips = [
     query && { label: `“${query}”`, clear: () => setQuery('') },
     bhk && { label: `${bhk} BHK`, clear: () => setBhk('') },
+    minBudget && { label: `≥ ₹${Number(minBudget).toLocaleString('en-IN')}`, clear: () => setMinBudget('') },
     budget && { label: `≤ ₹${Number(budget).toLocaleString('en-IN')}`, clear: () => setBudget('') },
-    bachelors && { label: 'Bachelor friendly', clear: () => setBachelors(false) }
+    furnishing && { label: furnishing, clear: () => setFurnishing('') },
+    bachelors && { label: 'Bachelor friendly', clear: () => setBachelors(false) },
+    verifiedOnly && { label: 'Verified only', clear: () => setVerifiedOnly(false) }
   ].filter(Boolean) as { label: string; clear: () => void }[];
+  const clearAll = () => { setQuery(''); setBhk(''); setMinBudget(''); setBudget(''); setFurnishing(''); setBachelors(false); setVerifiedOnly(false); };
+
+  async function saveSearch() {
+    const p = new URLSearchParams();
+    if (query.trim()) p.set('query', query.trim());
+    if (bhk) p.set('bhk', bhk);
+    if (budget) p.set('budget', budget);
+    if (bachelors) p.set('bachelor', 'yes');
+    const name = query.trim() || (bhk && `${bhk} BHK`) || (budget && `≤ ₹${Number(budget).toLocaleString('en-IN')}`) || 'All homes';
+    const u = auth.currentUser;
+    if (!u) { window.location.href = '/login'; return; }
+    const token = await u.getIdToken();
+    await fetch('/api/saved-searches', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ name, query: p.toString() }) }).catch(() => {});
+    setSavedFlash(true);
+    setTimeout(() => setSavedFlash(false), 2000);
+  }
 
   return (
     <main className="max-w-6xl mx-auto px-5 pb-10">
@@ -97,14 +125,20 @@ export default function DiscoverPage() {
       </div>
 
       <div className="sticky top-14 md:top-16 z-30 -mx-5 px-5 py-3 bg-canvas/90 backdrop-blur border-b border-line mb-5">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_auto] gap-2">
-          <div className="relative">
+        <button type="button" onClick={() => setFiltersOpen((o) => !o)} className="sm:hidden btn btn-sm w-full justify-between">
+          <span>Filters{chips.length ? ` · ${chips.length}` : ''}</span><span>{filtersOpen ? '▲' : '▼'}</span>
+        </button>
+        <div className={`${filtersOpen ? 'grid' : 'hidden'} sm:grid grid-cols-2 lg:grid-cols-4 gap-2 mt-2 sm:mt-0`}>
+          <div className="relative col-span-2 lg:col-span-1">
             <SearchIcon className="w-4 h-4 text-slate absolute left-3 top-1/2 -translate-y-1/2" />
             <input className="input pl-9" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search an area…" />
           </div>
           <select className="input" value={bhk} onChange={(e) => setBhk(e.target.value)}><option value="">Any size</option><option value="1">1 BHK</option><option value="2">2 BHK</option><option value="3">3 BHK</option></select>
-          <select className="input" value={budget} onChange={(e) => setBudget(e.target.value)}><option value="">Any budget</option><option value="20000">Under ₹20,000</option><option value="30000">Under ₹30,000</option><option value="45000">Under ₹45,000</option></select>
-          <button onClick={() => setBachelors(!bachelors)} aria-pressed={bachelors} className={`btn shrink-0 ${bachelors ? 'btn-primary' : ''}`}>{bachelors && <CheckIcon className="w-4 h-4" />} Bachelor</button>
+          <select className="input" value={furnishing} onChange={(e) => setFurnishing(e.target.value)}><option value="">Any furnishing</option><option value="unfurnished">Unfurnished</option><option value="semi furnished">Semi furnished</option><option value="fully furnished">Fully furnished</option></select>
+          <select className="input" value={minBudget} onChange={(e) => setMinBudget(e.target.value)}><option value="">Min ₹</option><option value="10000">₹10,000</option><option value="20000">₹20,000</option><option value="30000">₹30,000</option></select>
+          <select className="input" value={budget} onChange={(e) => setBudget(e.target.value)}><option value="">Max ₹</option><option value="20000">₹20,000</option><option value="30000">₹30,000</option><option value="45000">₹45,000</option><option value="75000">₹75,000</option></select>
+          <button onClick={() => setBachelors(!bachelors)} aria-pressed={bachelors} className={`btn ${bachelors ? 'btn-primary' : ''}`}>{bachelors && <CheckIcon className="w-4 h-4" />} Bachelor</button>
+          <button onClick={() => setVerifiedOnly(!verifiedOnly)} aria-pressed={verifiedOnly} className={`btn ${verifiedOnly ? 'btn-primary' : ''}`}>{verifiedOnly && <CheckIcon className="w-4 h-4" />} Verified only</button>
         </div>
       </div>
 
@@ -131,7 +165,8 @@ export default function DiscoverPage() {
           {chips.map((c) => (
             <button key={c.label} onClick={c.clear} className="inline-flex items-center gap-1 text-xs font-medium bg-accentSoft text-accent border border-accent/20 rounded-full pl-3 pr-2 py-1 hover:brightness-95">{c.label}<XIcon className="w-3 h-3" /></button>
           ))}
-          <button onClick={() => { setQuery(''); setBhk(''); setBudget(''); setBachelors(false); }} className="text-xs font-semibold text-slate hover:text-ink underline">Clear all</button>
+          <button onClick={clearAll} className="text-xs font-semibold text-slate hover:text-ink underline">Clear all</button>
+          <button onClick={saveSearch} className="text-xs font-semibold text-accent hover:underline ml-auto">{savedFlash ? 'Saved ✓' : 'Save this search'}</button>
         </div>
       )}
 
@@ -158,7 +193,7 @@ export default function DiscoverPage() {
           <div className="w-12 h-12 rounded-xl bg-accentSoft text-accent flex items-center justify-center mx-auto mb-3"><SearchIcon className="w-6 h-6" /></div>
           <p className="text-lg font-semibold">No homes match these filters</p>
           <p className="text-sm text-slate mt-1">Try widening your search, or submit a discovery as a scout.</p>
-          {chips.length > 0 && <button onClick={() => { setQuery(''); setBhk(''); setBudget(''); setBachelors(false); }} className="btn btn-sm mt-4">Clear filters</button>}
+          {chips.length > 0 && <button onClick={clearAll} className="btn btn-sm mt-4">Clear filters</button>}
         </div>
       )}
       </>)}
@@ -170,7 +205,7 @@ function ListingCard({ l, delay }: { l: Listing; delay: number }) {
   return (
     <Link href={`/listing/${l.id}`} style={{ animationDelay: `${delay}ms` }} className="panel panel-hover overflow-hidden group animate-fade-up">
       <div className="relative h-44 bg-accentSoft overflow-hidden">
-        <Media url={l.media} emoji={l.photo || '🏠'} alt={`${l.bhk} BHK in ${l.landmark}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" emojiClassName="absolute inset-0 flex items-center justify-center text-5xl" />
+        <CardMedia urls={l.mediaUrls} cover={l.media} alt={`${l.bhk} BHK in ${l.landmark}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" emojiClassName="absolute inset-0 flex items-center justify-center text-5xl" />
         <span className={`badge absolute top-3 right-3 ${l.status === 'verified' ? 'badge-green' : 'badge-yellow'}`}>{l.status === 'verified' ? <><CheckIcon className="w-3 h-3" /> Verified</> : 'Community'}</span>
         <ShortlistButton id={l.id} className="absolute top-2.5 left-2.5 bg-paper/90 backdrop-blur rounded-full p-1.5 border border-line shadow-offsetSm press" />
       </div>

@@ -44,6 +44,9 @@ export const CheckIcon = (p: SVGProps<SVGSVGElement>) => (
 export const UnlockIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></Icon>
 );
+export const LockIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></Icon>
+);
 export const ArrowRightIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}><path d="M5 12h14M13 5l7 7-7 7" /></Icon>
 );

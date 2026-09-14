@@ -65,6 +65,18 @@ test('features a video as primary and scores higher than photo-only', () => {
   }
 });
 
+test('board media stays separate from public home media and raises quality', () => {
+  const homeOnly = parseSubmission({ ...base, mediaUrls: ['https://x/a.jpg'] });
+  const withBoard = parseSubmission({ ...base, mediaUrls: ['https://x/a.jpg'], boardMediaUrls: ['https://x/board.jpg'] });
+  assert.ok('value' in homeOnly && 'value' in withBoard);
+  if ('value' in homeOnly && 'value' in withBoard) {
+    assert.deepEqual(withBoard.value.mediaUrls, ['https://x/a.jpg']);
+    assert.deepEqual(withBoard.value.boardMediaUrls, ['https://x/board.jpg']);
+    assert.equal(withBoard.value.primaryMedia, 'https://x/a.jpg');
+    assert.ok(withBoard.value.quality > homeOnly.value.quality);
+  }
+});
+
 test('drops non-media urls and caps/trims text fields', () => {
   const r = parseSubmission({ ...base, mediaUrls: ['not-a-url', 'https://x/a.jpg'], landmark: '  HSR  ' });
   assert.ok('value' in r);
