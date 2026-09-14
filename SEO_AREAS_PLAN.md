@@ -9,12 +9,17 @@ Server-rendered (ISR) locality pages with rich metadata, unique content, and hea
 - **Routes**
   - `/areas` — index of all localities (cards, search).
   - `/areas/[slug]` — one locality, e.g. `/areas/hsr-layout`.
+- **Scope: MAJOR areas only** — write a genuine, human, editorial **article** per top locality (not thin auto-generated stubs). Quality > quantity; ~10 to start. Thin/empty areas are not published (hurts SEO).
 - **Each area page contains**
-  1. **Editorial intro** (curated): what the area is like, connectivity (metro/roads/IT parks), who it suits, pros/cons. Starts as static content we author.
-  2. **Live rent stats** computed from our own listings in that area (avg/median rent by BHK, # available, freshness) — dynamic + unique + genuinely useful. Reuses `getPublicFeed` + landmark matching.
-  3. **Tenant area reviews** (UGC): star rating + text, moderated. Keeps pages fresh and unique → the ranking engine + the differentiator.
-  4. **Live listings in the area** (pull current + link each) + a big "Browse N homes in <area>" CTA → `/discover?query=<area>`. Strong internal links.
-- **Voice/design**: same minimal-premium system; each page reads like a real neighbourhood guide, not a doorway page.
+  1. **Human editorial article** (long-form, in our voice): what living there is actually like — connectivity (metro/roads/IT parks), vibe, who it suits, food/nightlife, commute, pros & cons, tips. Reads like a real neighbourhood guide, first-person and specific, **with photos** (hero + inline images of the area; stored in Cloudinary, delivered via next/image).
+  2. **Dual rating — "Spotted rating" + "Community rating"** shown side by side:
+     - **Spotted rating** = our editorial score (overall + sub-scores: Connectivity, Value for money, Safety, Amenities, Green/quiet), authored in the area content.
+     - **Community rating** = average of tenant reviews (AggregateRating).
+     Show both prominently near the top ("Spotted 4.2 · Community 4.0 (86 reviews)").
+  3. **Live rent stats** from our own listings in that area (avg/median by BHK, # available, freshness). Reuses `getPublicFeed` + landmark matching.
+  4. **Tenant reviews + "Rate this area"** (UGC, moderated): star rating (1–5) + optional sub-ratings + text. The review form is the "option to review area" — open to signed-in users, moderated like listings.
+  5. **Live listings in the area** + a big "Browse N homes in <area>" CTA → `/discover?query=<area>`. Strong internal links.
+- **Voice/design**: same minimal-premium system; reads like a real, opinionated neighbourhood guide, not a doorway page. Images make it human and shareable.
 
 ## SEO essentials (must-haves)
 - **SSG/ISR** per page (`export const revalidate`), unique `generateMetadata` (title, description, canonical, OpenGraph/Twitter).
@@ -25,13 +30,14 @@ Server-rendered (ISR) locality pages with rich metadata, unique content, and hea
 - Fast load (already: next/font, ISR, image optimisation).
 
 ## Data model
-- **MVP: static area content** in `src/lib/areas.ts` — `{ slug, name, blurb, connectivity, forWhom, lat, lng }` for the top ~10 Bengaluru localities (HSR, Koramangala, Indiranagar, Whitefield, BTM, JP Nagar, Marathahalli, Electronic City, Bellandur, Sarjapur Road). No DB needed for v1.
-- **Rent stats**: computed at build/ISR from `rentalOpportunities` (match `landmark`/area).
-- **Reviews (phase 2)**: `areaReviews/{id}` `{ areaSlug, uid, rating 1-5, text, status: 'pending'|'approved', createdAt }`; `/api/area-reviews` GET(approved)/POST(auth, pending) + admin moderation (reuse the admin verify pattern); `firestore.rules` allow read approved. AggregateRating JSON-LD from approved reviews.
+- **MVP: authored area content** in `src/content/areas/*.ts` (or MDX) — `{ slug, name, hero, images[], article (rich/MDX), spottedRating: { overall, connectivity, value, safety, amenities, green }, connectivity, forWhom, lat, lng }` for the top ~10 Bengaluru localities (HSR, Koramangala, Indiranagar, Whitefield, BTM, JP Nagar, Marathahalli, Electronic City, Bellandur, Sarjapur Road). Human-written; no DB needed for the article + Spotted rating.
+- **Rent stats**: computed at ISR time from `rentalOpportunities` (match `landmark`/area).
+- **Community reviews**: `areaReviews/{id}` `{ areaSlug, uid, rating 1-5, subRatings?, text, status: 'pending'|'approved', createdAt }`; `/api/area-reviews` GET(approved) / POST(auth → pending) / admin moderation (reuse the listing verify pattern); `firestore.rules` allow read approved. AggregateRating JSON-LD from approved reviews → community rating.
+- **Images**: area photos in Cloudinary (folder `area-guides`), rendered with next/image + the existing cloudinary loader.
 
 ## Phases
-1. **Foundation (ships real SEO surface):** `/areas` + `/areas/[slug]` (ISR) with static content + computed rent stats + live listings + internal links + metadata + JSON-LD (Place, Breadcrumb) + `sitemap.ts` + `robots.ts`. Popular-locality chips on Home/Discover.
-2. **Reviews (UGC):** submission form (auth, moderated) + display + AggregateRating JSON-LD; admin moderation queue.
+1. **Foundation + articles (ships real SEO surface):** `/areas` + `/areas/[slug]` (ISR) with the **human articles + photos + Spotted rating** + computed rent stats + live listings + internal links + metadata + JSON-LD (Place, Breadcrumb) + `sitemap.ts` + `robots.ts`. Popular-locality chips on Home/Discover. Write ~10 major areas.
+2. **Community reviews (UGC) + dual rating:** "Rate this area" form (auth, moderated) + reviews list + AggregateRating JSON-LD; show **Spotted rating + Community rating** together; admin moderation queue.
 3. **Scale content:** more localities, comparison/listicle guides ("best areas for bachelors", "under ₹20k areas"), FAQ blocks; wire the footer's "How it works"/guides.
 
 ## Notes / caveats
