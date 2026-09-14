@@ -5,9 +5,10 @@ import Media from '@/components/Media';
 import { getCurrentLocation, reverseGeocode } from '@/lib/geo';
 import { MapPinIcon, CheckIcon, SearchIcon, XIcon, ShieldCheckIcon } from '@/components/icons';
 import ShortlistButton from '@/components/ShortlistButton';
+import ListingsMap from '@/components/ListingsMap';
 import { readCache, writeCache } from '@/lib/clientCache';
 
-type Listing = { id: string; bhk: number; rent: number; deposit: number; furnishing: string; bachelorAllowed: string; status: string; trustScore: number; landmark: string; kmAway?: number; photo?: string; media?: string | null; beds?: string; freshness?: string; spottedAt?: string };
+type Listing = { id: string; bhk: number; rent: number; deposit: number; furnishing: string; bachelorAllowed: string; status: string; trustScore: number; landmark: string; kmAway?: number; photo?: string; media?: string | null; beds?: string; freshness?: string; spottedAt?: string; approxLat?: number; approxLng?: number };
 type Sort = 'fresh' | 'priceLow' | 'priceHigh' | 'trust';
 
 export default function DiscoverPage() {
@@ -21,6 +22,7 @@ export default function DiscoverPage() {
   const [budget, setBudget] = useState('');
   const [bachelors, setBachelors] = useState(false);
   const [sort, setSort] = useState<Sort>('fresh');
+  const [view, setView] = useState<'list' | 'map'>('list');
 
   async function load(lat?: number, lng?: number) {
     setLoadError('');
@@ -108,12 +110,20 @@ export default function DiscoverPage() {
 
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <p className="text-sm text-slate">{loading && !filtered.length ? 'Finding homes…' : <><b className="text-ink">{filtered.length}</b> {filtered.length === 1 ? 'home' : 'homes'} found</>}</p>
-        <label className="flex items-center gap-2 text-sm text-slate">
-          Sort by
-          <select className="input !py-1.5 !w-auto" value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
-            <option value="fresh">Freshest</option><option value="priceLow">Price: low to high</option><option value="priceHigh">Price: high to low</option><option value="trust">Trust score</option>
-          </select>
-        </label>
+        <div className="flex items-center gap-3">
+          <div className="inline-flex border border-line rounded-lg overflow-hidden text-sm font-medium">
+            <button type="button" aria-pressed={view === 'list'} onClick={() => setView('list')} className={`px-3 py-1.5 ${view === 'list' ? 'bg-ink text-white' : 'bg-paper hover:bg-canvas'}`}>List</button>
+            <button type="button" aria-pressed={view === 'map'} onClick={() => setView('map')} className={`px-3 py-1.5 border-l border-line ${view === 'map' ? 'bg-ink text-white' : 'bg-paper hover:bg-canvas'}`}>Map</button>
+          </div>
+          {view === 'list' && (
+            <label className="flex items-center gap-2 text-sm text-slate">
+              Sort by
+              <select className="input !py-1.5 !w-auto" value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
+                <option value="fresh">Freshest</option><option value="priceLow">Price: low to high</option><option value="priceHigh">Price: high to low</option><option value="trust">Trust score</option>
+              </select>
+            </label>
+          )}
+        </div>
       </div>
 
       {chips.length > 0 && (
@@ -132,6 +142,9 @@ export default function DiscoverPage() {
         </div>
       )}
 
+      {view === 'map' ? (
+        filtered.length ? <ListingsMap items={filtered} /> : <div className="panel p-10 text-center">No mappable homes for these filters.</div>
+      ) : (<>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {loading && !filtered.length
           ? Array.from({ length: 6 }).map((_, i) => (
@@ -148,6 +161,7 @@ export default function DiscoverPage() {
           {chips.length > 0 && <button onClick={() => { setQuery(''); setBhk(''); setBudget(''); setBachelors(false); }} className="btn btn-sm mt-4">Clear filters</button>}
         </div>
       )}
+      </>)}
     </main>
   );
 }
