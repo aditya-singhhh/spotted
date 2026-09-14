@@ -1,12 +1,15 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import CardMedia from '@/components/CardMedia';
 import { getCurrentLocation, reverseGeocode } from '@/lib/geo';
-import { MapPinIcon, CheckIcon, SearchIcon, XIcon, ShieldCheckIcon } from '@/components/icons';
+import { MapPinIcon, CheckIcon, SearchIcon, XIcon, ShieldCheckIcon, FilterIcon } from '@/components/icons';
+import { PROPERTY_TYPES, AMENITIES } from '@/lib/listingDetails';
 import ShortlistButton from '@/components/ShortlistButton';
-import ListingsMap from '@/components/ListingsMap';
 import { readCache, writeCache } from '@/lib/clientCache';
+
+const ListingsMap = dynamic(() => import('@/components/ListingsMap'), { ssr: false, loading: () => <div className="h-[68vh] min-h-[420px] rounded-2xl border border-line skeleton" /> });
 import { auth } from '@/lib/firebaseClient';
 
 type Listing = { id: string; bhk: number; rent: number; deposit: number; furnishing: string; bachelorAllowed: string; status: string; trustScore: number; landmark: string; kmAway?: number; photo?: string; media?: string | null; mediaUrls?: string[]; beds?: string; freshness?: string; spottedAt?: string; approxLat?: number; approxLng?: number };
@@ -24,11 +27,29 @@ export default function DiscoverPage() {
   const [bachelors, setBachelors] = useState(false);
   const [minBudget, setMinBudget] = useState('');
   const [furnishing, setFurnishing] = useState('');
+  const [propertyType, setPropertyType] = useState('');
+  const [amenities, setAmenities] = useState<string[]>([]);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [sort, setSort] = useState<Sort>('fresh');
   const [view, setView] = useState<'list' | 'map'>('list');
   const [savedFlash, setSavedFlash] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [barHidden, setBarHidden] = useState(false);
+
+  // Auto-collapse the filter bar when scrolling down; reveal on scroll up.
+  useEffect(() => {
+    let last = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (y > last && y > 220) setBarHidden(true);
+      else if (y < last) setBarHidden(false);
+      last = y;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const toggleAmenity = (a: string) => setAmenities((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]));
 
   async function load(lat?: number, lng?: number) {
     setLoadError('');
@@ -75,6 +96,8 @@ export default function DiscoverPage() {
       (!minBudget || l.rent >= Number(minBudget)) &&
       (!budget || l.rent <= Number(budget)) &&
       (!furnishing || (l.furnishing ?? '').toLowerCase() === furnishing) &&
+      (!propertyType || (l as any).details?.propertyType === propertyType) &&
+      (!amenities.length || amenities.every((a) => Array.isArray((l as any).amenities) && (l as any).amenities.includes(a))) &&
       (!bachelors || l.bachelorAllowed === 'yes') &&
       (!verifiedOnly || l.status === 'verified'));
     const by: Record<Sort, (a: Listing, b: Listing) => number> = {
@@ -84,7 +107,7 @@ export default function DiscoverPage() {
       trust: (a, b) => (b.trustScore ?? 0) - (a.trustScore ?? 0)
     };
     return sort === 'fresh' ? r : [...r].sort(by[sort]);
-  }, [listings, query, bhk, minBudget, budget, furnishing, bachelors, verifiedOnly, sort]);
+  }, [listings, query, bhk, minBudget, budget, furnishing, propertyType, amenities, bachelors, verifiedOnly, sort]);
 
   const chips = [
     query && { label: `“${query}”`, clear: () => setQuery('') },
@@ -92,10 +115,13 @@ export default function DiscoverPage() {
     minBudget && { label: `≥ ₹${Number(minBudget).toLocaleString('en-IN')}`, clear: () => setMinBudget('') },
     budget && { label: `≤ ₹${Number(budget).toLocaleString('en-IN')}`, clear: () => setBudget('') },
     furnishing && { label: furnishing, clear: () => setFurnishing('') },
+    propertyType && { label: propertyType, clear: () => setPropertyType('') },
+    ...amenities.map((a) => ({ label: a, clear: () => toggleAmenity(a) })),
     bachelors && { label: 'Bachelor friendly', clear: () => setBachelors(false) },
     verifiedOnly && { label: 'Verified only', clear: () => setVerifiedOnly(false) }
   ].filter(Boolean) as { label: string; clear: () => void }[];
-  const clearAll = () => { setQuery(''); setBhk(''); setMinBudget(''); setBudget(''); setFurnishing(''); setBachelors(false); setVerifiedOnly(false); };
+  const clearAll = () => { setQuery(''); setBhk(''); setMinBudget(''); setBudget(''); setFurnishing(''); setPropertyType(''); setAmenities([]); setBachelors(false); setVerifiedOnly(false); };
+  const advancedCount = [minBudget, furnishing, propertyType, bachelors, verifiedOnly].filter(Boolean).length + amenities.length;
 
   async function saveSearch() {
     const p = new URLSearchParams();
@@ -124,23 +150,41 @@ export default function DiscoverPage() {
         </button>
       </div>
 
-      <div className="sticky top-14 md:top-16 z-30 -mx-5 px-5 py-3 bg-canvas/90 backdrop-blur border-b border-line mb-5">
-        <button type="button" onClick={() => setFiltersOpen((o) => !o)} className="sm:hidden btn btn-sm w-full justify-between">
-          <span>Filters{chips.length ? ` · ${chips.length}` : ''}</span><span>{filtersOpen ? '▲' : '▼'}</span>
-        </button>
-        <div className={`${filtersOpen ? 'grid' : 'hidden'} sm:grid grid-cols-2 lg:grid-cols-4 gap-2 mt-2 sm:mt-0`}>
-          <div className="relative col-span-2 lg:col-span-1">
+      <div className={`sticky top-14 md:top-16 z-30 -mx-5 px-5 py-3 bg-canvas/90 backdrop-blur border-b border-line mb-5 transition-transform duration-300 ${barHidden ? '-translate-y-[140%]' : 'translate-y-0'}`}>
+        <div className="flex gap-2">
+          <div className="relative flex-1 min-w-0">
             <SearchIcon className="w-4 h-4 text-slate absolute left-3 top-1/2 -translate-y-1/2" />
             <input className="input pl-9" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search an area…" />
           </div>
-          <select className="input" value={bhk} onChange={(e) => setBhk(e.target.value)}><option value="">Any size</option><option value="1">1 BHK</option><option value="2">2 BHK</option><option value="3">3 BHK</option></select>
-          <select className="input" value={furnishing} onChange={(e) => setFurnishing(e.target.value)}><option value="">Any furnishing</option><option value="unfurnished">Unfurnished</option><option value="semi furnished">Semi furnished</option><option value="fully furnished">Fully furnished</option></select>
-          <select className="input" value={minBudget} onChange={(e) => setMinBudget(e.target.value)}><option value="">Min ₹</option><option value="10000">₹10,000</option><option value="20000">₹20,000</option><option value="30000">₹30,000</option></select>
-          <select className="input" value={budget} onChange={(e) => setBudget(e.target.value)}><option value="">Max ₹</option><option value="20000">₹20,000</option><option value="30000">₹30,000</option><option value="45000">₹45,000</option><option value="75000">₹75,000</option></select>
-          <button onClick={() => setBachelors(!bachelors)} aria-pressed={bachelors} className={`btn ${bachelors ? 'btn-primary' : ''}`}>{bachelors && <CheckIcon className="w-4 h-4" />} Bachelor</button>
-          <button onClick={() => setVerifiedOnly(!verifiedOnly)} aria-pressed={verifiedOnly} className={`btn ${verifiedOnly ? 'btn-primary' : ''}`}>{verifiedOnly && <CheckIcon className="w-4 h-4" />} Verified only</button>
+          <select className="input !w-auto hidden md:block" value={bhk} onChange={(e) => setBhk(e.target.value)}><option value="">Any size</option><option value="1">1 BHK</option><option value="2">2 BHK</option><option value="3">3 BHK</option></select>
+          <select className="input !w-auto hidden md:block" value={budget} onChange={(e) => setBudget(e.target.value)}><option value="">Max ₹</option><option value="20000">₹20,000</option><option value="30000">₹30,000</option><option value="45000">₹45,000</option><option value="75000">₹75,000</option></select>
+          <button onClick={() => setFiltersOpen(true)} className="btn shrink-0"><FilterIcon className="w-4 h-4" /> Filters{advancedCount ? <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full bg-accent text-white text-[11px] font-bold">{advancedCount}</span> : null}</button>
         </div>
       </div>
+
+      {filtersOpen && (
+        <div className="fixed inset-0 z-50 flex sm:items-center sm:justify-center">
+          <div className="absolute inset-0 bg-ink/40 animate-fade-in" onClick={() => setFiltersOpen(false)} />
+          <div className="relative bg-paper w-full sm:max-w-lg mt-auto sm:my-auto rounded-t-2xl sm:rounded-2xl max-h-[86vh] flex flex-col border border-line shadow-lift animate-fade-up">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-line">
+              <h3 className="font-semibold">All filters</h3>
+              <button onClick={() => setFiltersOpen(false)} aria-label="Close" className="text-slate hover:text-ink"><XIcon className="w-5 h-5" /></button>
+            </div>
+            <div className="p-5 space-y-5 overflow-y-auto">
+              <div><p className="section-label mb-2">Home size</p><div className="flex flex-wrap gap-2">{['', '1', '2', '3'].map((v) => <button key={v || 'any'} onClick={() => setBhk(v)} className={`btn btn-sm ${bhk === v ? 'btn-primary' : ''}`}>{v ? `${v} BHK` : 'Any'}</button>)}</div></div>
+              <div><p className="section-label mb-2">Monthly budget</p><div className="grid grid-cols-2 gap-2"><select className="input" value={minBudget} onChange={(e) => setMinBudget(e.target.value)}><option value="">Min ₹</option><option value="10000">₹10,000</option><option value="20000">₹20,000</option><option value="30000">₹30,000</option></select><select className="input" value={budget} onChange={(e) => setBudget(e.target.value)}><option value="">Max ₹</option><option value="20000">₹20,000</option><option value="30000">₹30,000</option><option value="45000">₹45,000</option><option value="75000">₹75,000</option></select></div></div>
+              <div><p className="section-label mb-2">Furnishing</p><select className="input" value={furnishing} onChange={(e) => setFurnishing(e.target.value)}><option value="">Any furnishing</option><option value="unfurnished">Unfurnished</option><option value="semi furnished">Semi furnished</option><option value="fully furnished">Fully furnished</option></select></div>
+              <div><p className="section-label mb-2">Property type</p><div className="flex flex-wrap gap-2">{PROPERTY_TYPES.map((t) => <button key={t} onClick={() => setPropertyType(propertyType === t ? '' : t)} className={`btn btn-sm ${propertyType === t ? 'btn-primary' : ''}`}>{t}</button>)}</div></div>
+              <div><p className="section-label mb-2">Preferences</p><div className="flex flex-wrap gap-2"><button onClick={() => setBachelors(!bachelors)} aria-pressed={bachelors} className={`btn btn-sm ${bachelors ? 'btn-primary' : ''}`}>{bachelors && <CheckIcon className="w-3.5 h-3.5" />} Bachelor friendly</button><button onClick={() => setVerifiedOnly(!verifiedOnly)} aria-pressed={verifiedOnly} className={`btn btn-sm ${verifiedOnly ? 'btn-primary' : ''}`}>{verifiedOnly && <CheckIcon className="w-3.5 h-3.5" />} Verified only</button></div></div>
+              <div><p className="section-label mb-2">Amenities</p><div className="flex flex-wrap gap-2">{AMENITIES.map((a) => <button key={a} onClick={() => toggleAmenity(a)} className={`btn btn-sm ${amenities.includes(a) ? 'btn-primary' : ''}`}>{a}</button>)}</div></div>
+            </div>
+            <div className="flex gap-2 px-5 py-3 border-t border-line">
+              <button className="btn flex-1" onClick={clearAll}>Reset</button>
+              <button className="btn btn-primary flex-1" onClick={() => setFiltersOpen(false)}>Show {filtered.length} {filtered.length === 1 ? 'home' : 'homes'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <p className="text-sm text-slate">{loading && !filtered.length ? 'Finding homes…' : <><b className="text-ink">{filtered.length}</b> {filtered.length === 1 ? 'home' : 'homes'} found</>}</p>

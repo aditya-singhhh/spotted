@@ -29,7 +29,7 @@
 .map-price.is-verified { background: #059669; }
 .leaflet-popup-content .map-pop { font-weight: 600; color: #111827; text-decoration: none; }
 .leaflet-popup-content .map-pop:hover { text-decoration: underline; }
-.leaflet-popup-content .map-pop-rent { font-family: 'Space Mono', ui-monospace, monospace; font-weight: 700; margin-top: 2px; color: #4F46E5; }
+.leaflet-popup-content .map-pop-rent { font-family: var(--font-mono), ui-monospace, monospace; font-weight: 700; margin-top: 2px; color: #4F46E5; }
 
 @layer utilities {
   .animate-fade-up { animation: fadeUp .5s cubic-bezier(.22,.61,.36,1) both; }

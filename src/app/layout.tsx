@@ -1,7 +1,11 @@
 import type { Metadata } from 'next';
+import { Inter, Space_Mono } from 'next/font/google';
 import './globals.css';
 import AppNav from '@/components/AppNav';
 import Footer from '@/components/Footer';
+
+const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800'], variable: '--font-inter', display: 'swap' });
+const spaceMono = Space_Mono({ subsets: ['latin'], weight: ['400', '700'], variable: '--font-mono', display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'spotted. — find rentals the internet missed',
@@ -10,15 +14,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="en" className={`${inter.variable} ${spaceMono.variable}`}>
       <body className="bg-paper text-ink font-body pb-24 md:pb-0">
         <AppNav />
         {children}

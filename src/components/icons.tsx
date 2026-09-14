@@ -26,6 +26,9 @@ export const HomeIcon = (p: SVGProps<SVGSVGElement>) => (
 export const SearchIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></Icon>
 );
+export const FilterIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" /></Icon>
+);
 export const PlusIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}><path d="M12 5v14M5 12h14" /></Icon>
 );
