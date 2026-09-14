@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   RecaptchaVerifier,
   createUserWithEmailAndPassword,
@@ -23,7 +25,11 @@ import { auth } from '@/lib/firebaseClient';
  * that's plenty for testing; upgrade to Blaze (still free at low
  * volume) before real launch.
  */
-export default function AuthGate({ children }: { children: (user: User) => React.ReactNode }) {
+// mode 'redirect' (default): logged-out users see a compact prompt with a button
+// to /login?next=<path>. mode 'form': render the full sign-in form inline (used
+// only on the /login page). Renders children once a session exists.
+export default function AuthGate({ children, mode = 'redirect' }: { children: (user: User) => React.ReactNode; mode?: 'form' | 'redirect' }) {
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [phone, setPhone] = useState('+91');
@@ -108,6 +114,14 @@ export default function AuthGate({ children }: { children: (user: User) => React
     </div>
   );
   if (user) return <>{children(user)}</>;
+
+  if (mode === 'redirect') return (
+    <div className="sticker p-6 max-w-sm mx-auto text-center">
+      <h3 className="text-lg mb-1">Sign in to continue</h3>
+      <p className="text-sm text-slate mb-4">Sign in or create a free account — it only takes a minute.</p>
+      <Link href={`/login?next=${encodeURIComponent(pathname || '/')}`} className="btn btn-primary w-full">Sign in / Create account</Link>
+    </div>
+  );
 
   return (
     <div className="sticker p-6 max-w-sm mx-auto mt-6">

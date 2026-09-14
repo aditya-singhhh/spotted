@@ -1,6 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import type { User } from 'firebase/auth';
 import AuthGate from '@/components/AuthGate';
 
 export default function LoginPage() {
@@ -9,8 +12,19 @@ export default function LoginPage() {
       <Link href="/" className="font-display text-xl">spotted.</Link>
       <p className="section-label mt-10">Your rental network</p>
       <h1 className="text-4xl mt-2">Sign in and find your next place.</h1>
-      <p className="text-sm text-slate mt-3">Create one account to rent, scout, and track your activity. Phone OTP is ready to enable when you launch.</p>
-      <AuthGate>{() => <div className="sticker p-6 bg-greenSoft mt-6"><h2 className="text-xl">You&apos;re signed in.</h2><Link href="/discover" className="btn btn-primary mt-4">Explore rentals →</Link></div>}</AuthGate>
+      <p className="text-sm text-slate mt-3">Create one account to rent, scout, and track your activity.</p>
+      <AuthGate mode="form">{(user) => <SignedIn user={user} />}</AuthGate>
     </main>
   );
+}
+
+// Once signed in, bounce back to wherever the user came from (?next=…), else Explore.
+function SignedIn({ user }: { user: User }) {
+  const router = useRouter();
+  useEffect(() => {
+    const next = new URLSearchParams(window.location.search).get('next');
+    const safe = next && next.startsWith('/') ? next : '/discover';
+    router.replace(safe);
+  }, [router, user]);
+  return <div className="sticker p-6 bg-greenSoft mt-6"><h2 className="text-xl">You&apos;re signed in.</h2><p className="text-sm text-slate mt-1">Taking you back…</p></div>;
 }
