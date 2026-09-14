@@ -10,6 +10,7 @@ import { CheckIcon, SearchIcon, MapPinIcon, ShieldCheckIcon, SparkleIcon, Trendi
 import { readCache, writeCache } from '@/lib/clientCache';
 import { AREAS } from '@/content/areas';
 import { RiderScoutArt, NeighbourhoodMapArt } from '@/components/BrandArt';
+import AreaGraphic from '@/components/AreaGraphic';
 import type { ComponentType } from 'react';
 
 const POPULAR_SEARCHES: { label: string; params: Record<string, string> }[] = [
@@ -138,7 +139,7 @@ export default function Home() {
             <Link key={a.slug} href={`/areas/${a.slug}`} className="group relative aspect-[4/5] rounded-2xl overflow-hidden border border-line shadow-sm">
               {a.image
                 ? <div className="absolute inset-0 bg-cover bg-center transition-transform duration-[600ms] group-hover:scale-105" style={{ backgroundImage: `url(${a.image})` }} />
-                : <div className="absolute inset-0 transition-transform duration-[600ms] group-hover:scale-105" style={{ background: `radial-gradient(120% 120% at 20% 0%, ${a.tint} 0%, ${a.tint}cc 45%, ${a.tint}80 100%)` }} />}
+                : <div className="absolute inset-0 transition-transform duration-[600ms] group-hover:scale-105"><AreaGraphic area={a} /></div>}
               <div className="absolute inset-0 bg-gradient-to-t from-ink/75 via-ink/15 to-transparent" />
               <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 bg-white/95 px-2 py-0.5 rounded-full text-[11px] font-bold text-ink"><StarIcon className="w-3 h-3 text-yellow" /> {a.rating.overall.toFixed(1)}</span>
               <MapPinIcon className="absolute top-3 left-3 w-4 h-4 text-white/85" />

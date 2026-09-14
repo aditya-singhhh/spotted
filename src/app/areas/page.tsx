@@ -4,8 +4,8 @@ import { AREAS } from '@/content/areas';
 import { getPublicFeed } from '@/lib/listings';
 import { computeRentStats } from '@/lib/areaStats';
 import { absUrl } from '@/lib/site';
-import Stars from '@/components/Stars';
-import { MapPinIcon, ChevronRightIcon } from '@/components/icons';
+import AreaGraphic from '@/components/AreaGraphic';
+import { MapPinIcon, ChevronRightIcon, StarIcon } from '@/components/icons';
 
 export const revalidate = 600;
 
@@ -71,11 +71,13 @@ export default async function AreasIndex() {
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
         {areas.map(({ area, stats }) => (
           <Link key={area.slug} href={`/areas/${area.slug}`} className="sticker overflow-hidden hover:-translate-y-0.5 transition-transform group">
-            <div className="h-28 relative flex items-end p-4" style={{ background: `linear-gradient(135deg, ${area.tint}22, ${area.tint}0d)` }}>
-              <div className="absolute top-3 right-3 rounded-full bg-paper/90 border border-line px-2 py-1 flex items-center gap-1 text-xs font-semibold">
-                <Stars value={area.rating.overall} className="w-3.5 h-3.5" /> {area.rating.overall.toFixed(1)}
-              </div>
-              <h2 className="text-xl flex items-center gap-1.5"><MapPinIcon className="w-4 h-4 text-slate" /> {area.name}</h2>
+            <div className="h-32 relative flex items-end p-4 overflow-hidden">
+              {area.image
+                ? <div className="absolute inset-0 bg-cover bg-center transition-transform duration-[600ms] group-hover:scale-105" style={{ backgroundImage: `url(${area.image})` }} />
+                : <div className="absolute inset-0 transition-transform duration-[600ms] group-hover:scale-105"><AreaGraphic area={area} /></div>}
+              <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/10 to-transparent" />
+              <span className="absolute top-3 right-3 inline-flex items-center gap-1 bg-white/95 px-2 py-0.5 rounded-full text-xs font-bold text-ink"><StarIcon className="w-3 h-3 text-yellow" /> {area.rating.overall.toFixed(1)}</span>
+              <h2 className="relative text-xl text-white flex items-center gap-1.5"><MapPinIcon className="w-4 h-4" /> {area.name}</h2>
             </div>
             <div className="p-4">
               <p className="text-sm text-slate leading-snug line-clamp-2">{area.tagline}</p>
