@@ -62,6 +62,17 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == resource.data.uid;
     }
 
+    // A user may read their own entitlement (unlock credits / pass). The doc id
+    // is the uid; writes are server-side only (through /api/purchase, /api/unlock).
+    match /entitlements/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // A user may read their own package purchase history (writes are server-side).
+    match /packagePurchases/{id} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.uid;
+    }
+
     // Everything else (properties, evidence, verifications, scoutRewards,
     // reports) is server-only.
     match /properties/{id} { allow read: if false; }

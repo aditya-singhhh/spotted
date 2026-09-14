@@ -8,6 +8,9 @@ import ShortlistButton from '@/components/ShortlistButton';
 import Reveal from '@/components/Reveal';
 import { CheckIcon, SearchIcon, MapPinIcon, ShieldCheckIcon, SparkleIcon, TrendingUpIcon } from '@/components/icons';
 import { readCache, writeCache } from '@/lib/clientCache';
+import { AREAS } from '@/content/areas';
+import Stars from '@/components/Stars';
+import { RiderScoutArt } from '@/components/BrandArt';
 import type { ComponentType } from 'react';
 
 const STEPS: { Icon: ComponentType<{ className?: string }>; title: string; body: string }[] = [
@@ -86,6 +89,24 @@ export default function Home() {
         </section>
       )}
 
+      <section className="max-w-5xl mx-auto px-5 py-14 sm:py-16">
+        <div className="flex items-end justify-between mb-6">
+          <div><p className="section-label mb-1">Know before you rent</p><h2 className="text-2xl sm:text-3xl">Explore Bengaluru by area</h2></div>
+          <Link href="/areas" className="text-sm font-semibold text-accent shrink-0">All area guides →</Link>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {AREAS.slice(0, 5).map((a) => (
+            <Link key={a.slug} href={`/areas/${a.slug}`} className="panel panel-hover p-4 group">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3" style={{ background: `${a.tint}1a` }}>
+                <MapPinIcon className="w-4 h-4" style={{ color: a.tint }} />
+              </div>
+              <h3 className="text-base leading-tight">{a.name}</h3>
+              <div className="flex items-center gap-1 mt-1.5 text-xs text-slate"><Stars value={a.rating.overall} className="w-3 h-3" /> {a.rating.overall.toFixed(1)}</div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section id="how-it-works" className="border-y border-line bg-paper scroll-mt-20">
         <div className="max-w-5xl mx-auto px-5 py-14 sm:py-16">
           <div className="text-center max-w-xl mx-auto mb-12">
@@ -110,10 +131,11 @@ export default function Home() {
           <div className="relative flex flex-col md:flex-row gap-6 justify-between md:items-center">
             <div className="max-w-xl">
               <p className="section-label !text-accent mb-3">Earn from your neighbourhood</p>
-              <h2 className="text-2xl sm:text-3xl">See a board? Turn it into a useful lead.</h2>
-              <p className="text-paper/70 mt-3">Anyone can scout. Share a genuine rental, our team verifies it, and you earn every time a renter unlocks it.</p>
+              <h2 className="text-2xl sm:text-3xl">On the road all day? Turn boards into income.</h2>
+              <p className="text-paper/70 mt-3">Perfect for delivery riders and daily commuters. Snap a genuine TO-LET board, our team verifies it, and you earn every time a renter unlocks it.</p>
+              <Link href="/scout" className="btn bg-paper text-ink border-paper hover:bg-white mt-5 inline-flex">Become a scout →</Link>
             </div>
-            <Link href="/scout" className="btn bg-paper text-ink border-paper hover:bg-white shrink-0">Become a scout →</Link>
+            <RiderScoutArt className="w-56 md:w-64 shrink-0 mx-auto md:mx-0" />
           </div>
         </div>
       </section>

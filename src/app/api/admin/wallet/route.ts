@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { getUserFromRequest, requireRole } from '@/lib/apiAuth';
+import { DEFAULT_PLANS, validatePlans, type Plan } from '@/lib/plans';
 
 async function admin(req: NextRequest) { const user = await getUserFromRequest(req); return !!user && requireRole(user.uid, 'admin'); }
 
 export async function GET(req: NextRequest) {
   if (!await admin(req)) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-  const [settings, rewards, withdrawals] = await Promise.all([
+  const [settings, rewards, withdrawals, purchases] = await Promise.all([
     adminDb.collection('platformSettings').doc('marketplace').get(),
     adminDb.collection('scoutRewards').orderBy('createdAt', 'desc').limit(100).get(),
-    adminDb.collection('withdrawals').orderBy('createdAt', 'desc').limit(100).get()
+    adminDb.collection('withdrawals').orderBy('createdAt', 'desc').limit(100).get(),
+    adminDb.collection('packagePurchases').orderBy('createdAt', 'desc').limit(200).get()
   ]);
+  const configured = settings.data()?.plans as Plan[] | undefined;
   return NextResponse.json({
     unlockPrice: Number(settings.data()?.unlockPrice ?? 29),
+    plans: Array.isArray(configured) && configured.length ? configured : DEFAULT_PLANS,
     rewards: rewards.docs.map((d) => ({ id: d.id, ...d.data() })),
-    withdrawals: withdrawals.docs.map((d) => ({ id: d.id, ...d.data() }))
+    withdrawals: withdrawals.docs.map((d) => ({ id: d.id, ...d.data() })),
+    purchases: purchases.docs.map((d) => ({ id: d.id, ...d.data() }))
   });
 }
 
@@ -27,6 +32,12 @@ export async function POST(req: NextRequest) {
     if (!Number.isInteger(amount) || amount < 1 || amount > 9999) return NextResponse.json({ error: 'Enter a whole rupee amount between 1 and 9,999.' }, { status: 400 });
     await adminDb.collection('platformSettings').doc('marketplace').set({ unlockPrice: amount, updatedAt: new Date().toISOString(), updatedBy: user.uid }, { merge: true });
     return NextResponse.json({ success: true });
+  }
+  if (body.action === 'set_plans') {
+    const result = validatePlans(body.plans);
+    if ('error' in result) return NextResponse.json({ error: result.error }, { status: 400 });
+    await adminDb.collection('platformSettings').doc('marketplace').set({ plans: result.plans, updatedAt: new Date().toISOString(), updatedBy: user.uid }, { merge: true });
+    return NextResponse.json({ success: true, plans: result.plans });
   }
   if (body.action === 'approve_reward') {
     const ref = adminDb.collection('scoutRewards').doc(body.rewardId);

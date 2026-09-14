@@ -9,6 +9,7 @@ import { CheckIcon, UnlockIcon, MapPinIcon, ShieldCheckIcon } from '@/components
 import ShortlistButton from '@/components/ShortlistButton';
 import { pushRecentlyViewed } from '@/lib/clientCache';
 import { detailRows } from '@/lib/listingDetails';
+import { normalizeEntitlement, resolveUnlockMethod, hasActivePass, type Plan, type Entitlement, EMPTY_ENTITLEMENT } from '@/lib/plans';
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
@@ -24,10 +25,14 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
   const [unlocked, setUnlocked] = useState<any>(null);
   const [unlocking, setUnlocking] = useState(false);
   const [unlockPrice, setUnlockPrice] = useState(29);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [entitlement, setEntitlement] = useState<Entitlement>(EMPTY_ENTITLEMENT);
+  const [buying, setBuying] = useState<string | null>(null);
+  const [showPacks, setShowPacks] = useState(false);
   const [activeMedia, setActiveMedia] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/settings').then((r) => r.json()).then((d) => setUnlockPrice(d.unlockPrice || 29)).catch(() => {});
+    fetch('/api/plans').then((r) => r.json()).then((d) => { setUnlockPrice(d.unlockPrice || 29); setPlans(Array.isArray(d.plans) ? d.plans : []); }).catch(() => {});
     pushRecentlyViewed({ id, bhk: listing.bhk, rent: listing.rent, landmark: listing.landmark, media: listing.media });
   }, [id, listing]);
 
@@ -36,12 +41,27 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
       if (!u) return;
       try {
         const token = await u.getIdToken();
-        const res = await fetch(`/api/unlock?rentalOpportunityId=${id}`, { headers: { Authorization: `Bearer ${token}` } });
-        if (res.ok) { const d = await res.json(); if (d.unlocked) setUnlocked(d); }
+        const [uRes, eRes] = await Promise.all([
+          fetch(`/api/unlock?rentalOpportunityId=${id}`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch('/api/purchase', { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+        if (uRes.ok) { const d = await uRes.json(); if (d.unlocked) setUnlocked(d); }
+        if (eRes.ok) setEntitlement(normalizeEntitlement(await eRes.json()));
       } catch { /* stays locked */ }
     });
     return () => unsub();
   }, [id]);
+
+  async function buyPlan(planId: string) {
+    setBuying(planId);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/purchase', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ planId }) });
+      const data = await res.json();
+      if (res.ok) { setEntitlement(normalizeEntitlement(data.entitlement)); setShowPacks(false); }
+      else alert(data.error ?? 'Could not complete the purchase.');
+    } catch { alert('Could not complete the purchase. Please try again.'); } finally { setBuying(null); }
+  }
 
   async function unlock() {
     setUnlocking(true);
@@ -148,23 +168,76 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
             <div className="mt-4">
               {!unlocked ? (
                 <>
-                  <div className="rounded-xl border border-line bg-canvas p-3 mb-3">
-                    <div className="flex items-baseline justify-between">
-                      <span className="font-semibold text-sm">Unlock owner contact</span>
-                      <span className="font-mono font-bold text-accent">₹{unlockPrice}</span>
-                    </div>
-                    <ul className="text-xs text-slate mt-2 space-y-1">
-                      <li className="flex items-center gap-1.5"><CheckIcon className="w-3.5 h-3.5 text-green shrink-0" /> Owner name &amp; phone number</li>
-                      <li className="flex items-center gap-1.5"><CheckIcon className="w-3.5 h-3.5 text-green shrink-0" /> Exact location + Google Maps</li>
-                      <li className="flex items-center gap-1.5"><CheckIcon className="w-3.5 h-3.5 text-green shrink-0" /> Kept in your profile — no re-charge</li>
-                    </ul>
-                  </div>
-                  <AuthGate>{() => (
-                    <>
-                      <button className="btn btn-primary w-full" onClick={unlock} disabled={unlocking}>{unlocking ? 'Unlocking…' : `Unlock now · ₹${unlockPrice}`}</button>
-                      <p className="text-xs text-slate mt-2 text-center">One-time fee · no brokerage · no subscription.</p>
-                    </>
-                  )}</AuthGate>
+                  {(() => {
+                    const passActive = hasActivePass(entitlement);
+                    const method = resolveUnlockMethod(entitlement);
+                    const ctaLabel = unlocking
+                      ? 'Unlocking…'
+                      : method === 'pass'
+                        ? 'Unlock now · Pass active'
+                        : method === 'credit'
+                          ? `Unlock now · use 1 credit`
+                          : `Unlock now · ₹${unlockPrice}`;
+                    const packs = plans.filter((p) => p.active !== false);
+                    return (
+                      <>
+                        <div className="rounded-xl border border-line bg-canvas p-3 mb-3">
+                          <div className="flex items-baseline justify-between">
+                            <span className="font-semibold text-sm">Unlock owner contact</span>
+                            {passActive ? (
+                              <span className="badge badge-green"><UnlockIcon className="w-3.5 h-3.5" /> Unlimited</span>
+                            ) : entitlement.credits > 0 ? (
+                              <span className="badge badge-accent">{entitlement.credits} credit{entitlement.credits === 1 ? '' : 's'}</span>
+                            ) : (
+                              <span className="font-mono font-bold text-accent">₹{unlockPrice}</span>
+                            )}
+                          </div>
+                          <ul className="text-xs text-slate mt-2 space-y-1">
+                            <li className="flex items-center gap-1.5"><CheckIcon className="w-3.5 h-3.5 text-green shrink-0" /> Owner name &amp; phone number</li>
+                            <li className="flex items-center gap-1.5"><CheckIcon className="w-3.5 h-3.5 text-green shrink-0" /> Exact location + Google Maps</li>
+                            <li className="flex items-center gap-1.5"><CheckIcon className="w-3.5 h-3.5 text-green shrink-0" /> Kept in your profile — no re-charge</li>
+                          </ul>
+                          {passActive && entitlement.passExpiresAt && (
+                            <p className="text-[11px] text-slate mt-2">Pass valid till {new Date(entitlement.passExpiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}.</p>
+                          )}
+                        </div>
+                        <AuthGate>{() => (
+                          <>
+                            <button className="btn btn-primary w-full" onClick={unlock} disabled={unlocking}>{ctaLabel}</button>
+                            {method === 'single'
+                              ? <p className="text-xs text-slate mt-2 text-center">One-time fee · no brokerage · no subscription.</p>
+                              : <p className="text-xs text-slate mt-2 text-center">Included in your {method === 'pass' ? 'pass' : 'pack'} · no extra charge.</p>}
+
+                            {!passActive && packs.length > 0 && (
+                              <div className="mt-3">
+                                <button type="button" onClick={() => setShowPacks((v) => !v)} className="text-xs font-semibold text-accent w-full text-center">
+                                  {showPacks ? 'Hide packs' : `Searching for a few? Save with a pack ↓`}
+                                </button>
+                                {showPacks && (
+                                  <div className="grid gap-2 mt-2">
+                                    {packs.map((p) => (
+                                      <button key={p.id} type="button" onClick={() => buyPlan(p.id)} disabled={!!buying} className="rounded-xl border border-line bg-paper p-3 text-left hover:border-accent transition-colors disabled:opacity-60">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="font-semibold text-sm flex items-center gap-1.5">{p.label}{p.badge && <span className="badge badge-accent">{p.badge}</span>}</span>
+                                          <span className="font-mono font-bold">₹{p.price}</span>
+                                        </div>
+                                        <p className="text-xs text-slate mt-0.5">
+                                          {p.type === 'pass' ? `Unlimited unlocks for ${p.days} days` : `${p.credits} unlocks`}
+                                          {p.type === 'credits' && p.credits ? ` · ₹${Math.round(p.price / p.credits)} each` : ''}
+                                          {buying === p.id ? ' · processing…' : ''}
+                                        </p>
+                                      </button>
+                                    ))}
+                                    <p className="text-[11px] text-slate text-center">Payments are in demo mode until the gateway is live.</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}</AuthGate>
+                      </>
+                    );
+                  })()}
                 </>
               ) : (
                 <div className="rounded-xl bg-greenSoft border border-green/20 p-4">

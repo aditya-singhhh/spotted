@@ -19,6 +19,8 @@ function AdminBoard({ user }: { user: User }) {
   const [data, setData] = useState<any>(null);
   const [wallet, setWallet] = useState<any>(null);
   const [price, setPrice] = useState('29');
+  const [plans, setPlans] = useState<any[]>([]);
+  const [savingPlans, setSavingPlans] = useState(false);
   const [error, setError] = useState('');
   const [seeding, setSeeding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -41,7 +43,23 @@ function AdminBoard({ user }: { user: User }) {
     }
     setData(body);
     const walletRes = await fetch('/api/admin/wallet', { headers: { Authorization: `Bearer ${token}` } });
-    if (walletRes.ok) { const walletBody = await walletRes.json(); setWallet(walletBody); setPrice(String(walletBody.unlockPrice)); }
+    if (walletRes.ok) { const walletBody = await walletRes.json(); setWallet(walletBody); setPrice(String(walletBody.unlockPrice)); setPlans(Array.isArray(walletBody.plans) ? walletBody.plans : []); }
+  }
+
+  function updatePlan(i: number, patch: any) { setPlans((ps) => ps.map((p, idx) => (idx === i ? { ...p, ...patch } : p))); }
+  function removePlan(i: number) { setPlans((ps) => ps.filter((_, idx) => idx !== i)); }
+  function addPlan() { setPlans((ps) => [...ps, { id: `plan${ps.length + 1}`, label: 'New pack', price: 49, type: 'credits', credits: 3, active: true }]); }
+
+  async function savePlans() {
+    setSavingPlans(true);
+    setError('');
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/admin/wallet', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ action: 'set_plans', plans }) });
+      const b = await res.json();
+      if (!res.ok) setError(b.error ?? 'Could not save packages.');
+      else setPlans(b.plans);
+    } catch { setError('Could not save packages.'); } finally { setSavingPlans(false); }
   }
 
   useEffect(() => {
@@ -146,7 +164,55 @@ function AdminBoard({ user }: { user: User }) {
         ))}
       </div>
 
+      {wallet && (() => {
+        const purchases = (wallet.purchases ?? []).filter((p: any) => p.paymentStatus === 'success');
+        const pkgRevenue = purchases.reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
+        const paidOut = (wallet.withdrawals ?? []).filter((w: any) => w.status === 'paid').reduce((s: number, w: any) => s + Number(w.amount || 0), 0);
+        const pendingRewards = (wallet.rewards ?? []).filter((r: any) => r.status === 'pending').reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+        const kpis: [string, string][] = [
+          ['Package revenue', `₹${pkgRevenue.toLocaleString('en-IN')}`],
+          ['Packages sold', String(purchases.length)],
+          ['Rewards pending', `₹${pendingRewards.toLocaleString('en-IN')}`],
+          ['Paid to scouts', `₹${paidOut.toLocaleString('en-IN')}`]
+        ];
+        return (
+          <div className="grid gap-3 mb-8" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))' }}>
+            {kpis.map(([k, v]) => (
+              <div key={k} className="sticker p-4"><div className="font-mono text-2xl font-bold">{v}</div><div className="text-xs text-slate-500 mt-1">{k}</div></div>
+            ))}
+          </div>
+        );
+      })()}
+
       <section className="sticker p-4 mb-6"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="section-label">Marketplace pricing</p><h2 className="text-xl mt-1">Contact unlock price</h2></div><div className="flex gap-2 items-center"><span className="font-mono">₹</span><input className="input w-24" type="number" value={price} onChange={e => setPrice(e.target.value)} /><button className="btn btn-sm btn-primary" onClick={() => walletAction('set_price')}>Save</button></div></div><p className="text-xs text-slate mt-3">A Scout earns 50% of each confirmed unlock. Payment collection is demo-mode until a payment gateway is connected.</p></section>
+
+      <section className="sticker p-4 mb-6">
+        <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
+          <div><p className="section-label">Marketplace pricing</p><h2 className="text-xl mt-1">Unlock packages</h2><p className="text-xs text-slate mt-1">Bundles renters can buy — credit packs or unlimited time passes. Fully configurable.</p></div>
+          <div className="flex gap-2">
+            <button className="btn btn-sm" onClick={addPlan}>+ Add package</button>
+            <button className="btn btn-sm btn-primary" onClick={savePlans} disabled={savingPlans}>{savingPlans ? 'Saving…' : 'Save packages'}</button>
+          </div>
+        </div>
+        <div className="grid gap-2">
+          {plans.length === 0 && <p className="text-sm text-slate">No packages yet — add one, or save to keep defaults.</p>}
+          {plans.map((p, i) => (
+            <div key={i} className={`panel p-3 grid gap-2 sm:grid-cols-[1.4fr_.7fr_.9fr_.9fr_1fr_auto] items-end ${p.active === false ? 'opacity-60' : ''}`}>
+              <label className="text-xs font-bold">Label<input className="input" value={p.label ?? ''} onChange={(e) => updatePlan(i, { label: e.target.value })} /></label>
+              <label className="text-xs font-bold">Price ₹<input className="input" type="number" value={p.price ?? 0} onChange={(e) => updatePlan(i, { price: Number(e.target.value) })} /></label>
+              <label className="text-xs font-bold">Type<select className="input" value={p.type ?? 'credits'} onChange={(e) => updatePlan(i, { type: e.target.value })}><option value="credits">Credits</option><option value="pass">Time pass</option></select></label>
+              {p.type === 'pass'
+                ? <label className="text-xs font-bold">Days<input className="input" type="number" value={p.days ?? 30} onChange={(e) => updatePlan(i, { days: Number(e.target.value) })} /></label>
+                : <label className="text-xs font-bold">Unlocks<input className="input" type="number" value={p.credits ?? 1} onChange={(e) => updatePlan(i, { credits: Number(e.target.value) })} /></label>}
+              <label className="text-xs font-bold">Badge<input className="input" value={p.badge ?? ''} placeholder="e.g. Popular" onChange={(e) => updatePlan(i, { badge: e.target.value })} /></label>
+              <div className="flex items-center gap-2 pb-1">
+                <label className="text-xs font-bold flex items-center gap-1"><input type="checkbox" checked={p.active !== false} onChange={(e) => updatePlan(i, { active: e.target.checked })} /> Live</label>
+                <button className="btn btn-sm btn-dark" onClick={() => removePlan(i)}>✕</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="mb-8"><div className="flex justify-between items-end mb-3"><div><p className="section-label">Scout wallet approvals</p><h2 className="text-xl mt-1">Pending earnings</h2></div><span className="text-xs text-slate">Approve only after checking the unlock.</span></div>{wallet?.rewards?.filter((r: any) => r.status === 'pending').length ? <div className="grid gap-2">{wallet.rewards.filter((r: any) => r.status === 'pending').map((r: any) => <div key={r.id} className="sticker p-3 flex flex-wrap gap-3 justify-between items-center"><div><p className="font-bold">₹{r.amount} pending for Scout {String(r.scoutId).slice(0, 12)}</p><p className="text-xs text-slate">Unlock {String(r.unlockTransactionId).slice(0, 10)} · awaiting payout approval</p></div><button className="btn btn-sm btn-yellow" onClick={() => walletAction('approve_reward', r.id)}>Approve to wallet</button></div>)}</div> : <div className="sticker p-4 text-sm text-slate">No Scout earnings awaiting approval.</div>}</section>
 

@@ -5,6 +5,7 @@ import { scoutReward } from '@/lib/reward';
 import { asString } from '@/lib/validation';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { captureError } from '@/lib/observability';
+import { normalizeEntitlement, resolveUnlockMethod } from '@/lib/plans';
 
 const SCOUT_SHARE = 0.5; // base scout share of each unlock, before quality scaling
 
@@ -34,6 +35,7 @@ export async function POST(req: NextRequest) {
 
     // These reads are independent — run them together instead of one-by-one to
     // cut the unlock round-trip time (the source of the click→reveal lag).
+    const entRef = adminDb.collection('entitlements').doc(uid);
     const [, roSnap, settingsSnap, contactSnap] = await Promise.all([
       ensureProfile(uid, { phone: decoded.phone_number, email: decoded.email }),
       roRef.get(),
@@ -46,6 +48,8 @@ export async function POST(req: NextRequest) {
     const unlockPrice = Number(settingsSnap.data()?.unlockPrice ?? 29);
 
     // ---- MOCK PAYMENT (replace with real gateway verification) ----
+    // A renter may pay via an active pass (free), a credit pack (consume one),
+    // or the single pay-per-unlock price. Scouts earn on every unlock regardless.
     // -----------------------------------------------------------------
 
     // One unlock per (user, listing): a deterministic txn id + a transaction make
@@ -56,10 +60,18 @@ export async function POST(req: NextRequest) {
 
     await adminDb.runTransaction(async (tx) => {
       if ((await tx.get(txnRef)).exists) return;
+      // Resolve payment method from the *fresh* entitlement inside the txn so a
+      // credit can't be double-spent under concurrent unlocks.
+      const entitlement = normalizeEntitlement((await tx.get(entRef)).data());
+      const method = resolveUnlockMethod(entitlement);
       const scoutRef = opportunity.scoutId ? adminDb.collection('scouts').doc(opportunity.scoutId) : null;
       const scoutSnap = scoutRef ? await tx.get(scoutRef) : null;
 
-      tx.set(txnRef, { rentalOpportunityId, seekerId: uid, amount: unlockPrice, paymentStatus: 'success', paymentRef: `mock_${Date.now()}`, createdAt: now });
+      const amountCharged = method === 'single' ? unlockPrice : 0;
+      tx.set(txnRef, { rentalOpportunityId, seekerId: uid, amount: amountCharged, method, paymentStatus: 'success', paymentRef: `mock_${Date.now()}`, createdAt: now });
+      if (method === 'credit') {
+        tx.set(entRef, { credits: Math.max(0, entitlement.credits - 1), updatedAt: now }, { merge: true });
+      }
       if (scoutRef) {
         tx.set(adminDb.collection('scoutRewards').doc(), { scoutId: opportunity.scoutId, unlockTransactionId: txnRef.id, amount: reward, status: 'pending', createdAt: now });
         if (scoutSnap!.exists) {
