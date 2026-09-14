@@ -57,6 +57,8 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
   const active = activeMedia ?? listing.media;
   const rows = detailRows(listing.details);
   const amenities: string[] = Array.isArray(listing.amenities) ? listing.amenities : [];
+  const spottedDays = listing.spottedAt ? Math.floor((Date.now() - new Date(listing.spottedAt).getTime()) / 86400000) : null;
+  const freshText = spottedDays == null ? 'Recently spotted' : spottedDays <= 0 ? 'Spotted today' : spottedDays === 1 ? 'Spotted yesterday' : spottedDays < 30 ? `Spotted ${spottedDays} days ago` : `Spotted ${Math.floor(spottedDays / 30)}mo ago`;
 
   return (
     <main className="max-w-5xl mx-auto px-5 pt-6 pb-12">
@@ -189,7 +191,7 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
               )}
             </div>
           </div>
-          <p className="text-center text-[11px] text-slate">Freshly spotted · <a href={`mailto:hello@spotted.app?subject=Report listing ${id}`} className="underline hover:text-ink">report a problem</a></p>
+          <p className="text-center text-[11px] text-slate">{freshText} · <a href={`mailto:hello@spotted.app?subject=Report listing ${id}`} className="underline hover:text-ink">report a problem</a></p>
         </aside>
       </div>
     </main>

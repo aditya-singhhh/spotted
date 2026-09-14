@@ -13,6 +13,17 @@ const ListingsMap = dynamic(() => import('@/components/ListingsMap'), { ssr: fal
 import { auth } from '@/lib/firebaseClient';
 
 type Listing = { id: string; bhk: number; rent: number; deposit: number; furnishing: string; bachelorAllowed: string; status: string; trustScore: number; landmark: string; kmAway?: number; photo?: string; media?: string | null; mediaUrls?: string[]; beds?: string; freshness?: string; spottedAt?: string; approxLat?: number; approxLng?: number };
+
+// Relative freshness from spottedAt (the old code always showed a hardcoded "Fresh today").
+function freshLabel(iso?: string) {
+  if (!iso) return 'Recently';
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (days <= 0) return 'Fresh today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days} days ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
 type Sort = 'fresh' | 'priceLow' | 'priceHigh' | 'trust';
 
 export default function DiscoverPage() {
@@ -262,7 +273,7 @@ function ListingCard({ l, delay }: { l: Listing; delay: number }) {
         <p className="text-xs text-slate mt-2 first-letter:uppercase">{l.beds || `${l.furnishing} · ${l.bachelorAllowed === 'yes' ? 'Bachelor friendly' : l.bachelorAllowed === 'no' ? 'Family home' : 'Ask owner'}`}</p>
         <div className="mt-3 pt-3 border-t border-line flex items-center justify-between text-xs">
           <span className="flex items-center gap-1 text-green font-medium"><ShieldCheckIcon className="w-3.5 h-3.5" /> Trust {l.trustScore}</span>
-          <span className="text-slate">{l.kmAway !== undefined ? `${l.kmAway.toFixed(1)} km away` : l.freshness || 'Fresh today'}</span>
+          <span className="text-slate">{l.kmAway !== undefined ? `${l.kmAway.toFixed(1)} km away` : freshLabel(l.spottedAt)}</span>
         </div>
       </div>
     </Link>
