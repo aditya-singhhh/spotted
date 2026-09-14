@@ -40,6 +40,13 @@ export default function AppNav() {
                 {t.label}
               </Link>
             ))}
+            <Link
+              href="/areas"
+              aria-current={pathname.startsWith('/areas') ? 'page' : undefined}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${pathname.startsWith('/areas') ? 'bg-ink text-paper' : 'hover:bg-ink/5'}`}
+            >
+              Areas
+            </Link>
           </nav>
           <div className="ml-auto flex items-center gap-2">
             <AdminLink />

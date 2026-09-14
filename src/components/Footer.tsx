@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 const groups = [
-  { title: 'Explore', links: [['Browse rentals', '/discover'], ['Become a scout', '/scout'], ['Your profile', '/scout/dashboard']] },
+  { title: 'Explore', links: [['Browse rentals', '/discover'], ['Bengaluru area guides', '/areas'], ['Become a scout', '/scout'], ['Your profile', '/scout/dashboard']] },
   { title: 'Company', links: [['How it works', '/#how-it-works'], ['Trust & safety', '/trust-and-safety'], ['Contact', '/contact']] },
   { title: 'Legal', links: [['Privacy', '/privacy'], ['Terms', '/terms'], ['Report a listing', '/trust-and-safety']] }
 ];
