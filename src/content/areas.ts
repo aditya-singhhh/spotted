@@ -9,6 +9,8 @@ export type Area = {
   name: string;
   tagline: string;
   tint: string; // hero gradient accent
+  image?: string; // optional area photo (Cloudinary) — falls back to the tint gradient
+  images?: string[];
   lat: number;
   lng: number;
   rating: AreaRating;

@@ -6,10 +6,9 @@ import { useEffect, useState } from 'react';
 import CardMedia from '@/components/CardMedia';
 import ShortlistButton from '@/components/ShortlistButton';
 import Reveal from '@/components/Reveal';
-import { CheckIcon, SearchIcon, MapPinIcon, ShieldCheckIcon, SparkleIcon, TrendingUpIcon, UnlockIcon } from '@/components/icons';
+import { CheckIcon, SearchIcon, MapPinIcon, ShieldCheckIcon, SparkleIcon, TrendingUpIcon, UnlockIcon, StarIcon } from '@/components/icons';
 import { readCache, writeCache } from '@/lib/clientCache';
 import { AREAS } from '@/content/areas';
-import Stars from '@/components/Stars';
 import { RiderScoutArt, NeighbourhoodMapArt } from '@/components/BrandArt';
 import type { ComponentType } from 'react';
 
@@ -136,12 +135,17 @@ export default function Home() {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {AREAS.slice(0, 5).map((a) => (
-            <Link key={a.slug} href={`/areas/${a.slug}`} className="panel panel-hover p-4 group">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3" style={{ background: `${a.tint}1a` }}>
-                <MapPinIcon className="w-4 h-4" style={{ color: a.tint }} />
+            <Link key={a.slug} href={`/areas/${a.slug}`} className="group relative aspect-[4/5] rounded-2xl overflow-hidden border border-line shadow-sm">
+              {a.image
+                ? <div className="absolute inset-0 bg-cover bg-center transition-transform duration-[600ms] group-hover:scale-105" style={{ backgroundImage: `url(${a.image})` }} />
+                : <div className="absolute inset-0 transition-transform duration-[600ms] group-hover:scale-105" style={{ background: `radial-gradient(120% 120% at 20% 0%, ${a.tint} 0%, ${a.tint}cc 45%, ${a.tint}80 100%)` }} />}
+              <div className="absolute inset-0 bg-gradient-to-t from-ink/75 via-ink/15 to-transparent" />
+              <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 bg-white/95 px-2 py-0.5 rounded-full text-[11px] font-bold text-ink"><StarIcon className="w-3 h-3 text-yellow" /> {a.rating.overall.toFixed(1)}</span>
+              <MapPinIcon className="absolute top-3 left-3 w-4 h-4 text-white/85" />
+              <div className="absolute inset-x-0 bottom-0 p-3">
+                <h3 className="text-white text-base font-bold leading-tight">{a.name}</h3>
+                <p className="text-white/85 text-[11px] mt-0.5 line-clamp-1">{a.tagline.split('—')[0].trim()}</p>
               </div>
-              <h3 className="text-base leading-tight">{a.name}</h3>
-              <div className="flex items-center gap-1 mt-1.5 text-xs text-slate"><Stars value={a.rating.overall} className="w-3 h-3" /> {a.rating.overall.toFixed(1)}</div>
             </Link>
           ))}
         </div>
