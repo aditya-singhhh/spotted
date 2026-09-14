@@ -1,15 +1,20 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import AuthGate from '@/components/AuthGate';
 import Media from '@/components/Media';
 import { auth } from '@/lib/firebaseClient';
 import { onAuthStateChanged } from 'firebase/auth';
-import { CheckIcon, UnlockIcon, MapPinIcon, ShieldCheckIcon } from '@/components/icons';
+import { CheckIcon, UnlockIcon, MapPinIcon, ShieldCheckIcon, ChevronRightIcon, StarIcon, XIcon } from '@/components/icons';
 import ShortlistButton from '@/components/ShortlistButton';
 import { pushRecentlyViewed } from '@/lib/clientCache';
 import { detailRows } from '@/lib/listingDetails';
 import { normalizeEntitlement, resolveUnlockMethod, hasActivePass, type Plan, type Entitlement, EMPTY_ENTITLEMENT } from '@/lib/plans';
+
+const ApproxMap = dynamic(() => import('@/components/ApproxMap'), { ssr: false, loading: () => <div className="w-full h-48 rounded-xl bg-canvas border border-line animate-pulse" /> });
+
+type AreaCard = { slug: string; name: string; rating: number; tagline: string } | null;
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
@@ -20,7 +25,7 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function ListingDetail({ id, initial }: { id: string; initial: any }) {
+export default function ListingDetail({ id, initial, similar = [], area = null }: { id: string; initial: any; similar?: any[]; area?: AreaCard }) {
   const [listing] = useState<any>(initial);
   const [unlocked, setUnlocked] = useState<any>(null);
   const [unlocking, setUnlocking] = useState(false);
@@ -30,6 +35,8 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
   const [buying, setBuying] = useState<string | null>(null);
   const [showPacks, setShowPacks] = useState(false);
   const [activeMedia, setActiveMedia] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<number | null>(null);
+  const [shared, setShared] = useState(false);
 
   useEffect(() => {
     fetch('/api/plans').then((r) => r.json()).then((d) => { setUnlockPrice(d.unlockPrice || 29); setPlans(Array.isArray(d.plans) ? d.plans : []); }).catch(() => {});
@@ -73,26 +80,52 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
     } catch { alert('Could not unlock this listing. Please try again.'); } finally { setUnlocking(false); }
   }
 
+  async function share() {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    const title = `${listing.bhk} BHK near ${listing.landmark} · ₹${Number(listing.rent).toLocaleString('en-IN')}/mo`;
+    try {
+      if (navigator.share) await navigator.share({ title, url });
+      else { await navigator.clipboard.writeText(url); setShared(true); setTimeout(() => setShared(false), 2000); }
+    } catch { /* user dismissed */ }
+  }
+
   const gallery: string[] = Array.isArray(listing.mediaUrls) && listing.mediaUrls.length ? listing.mediaUrls : listing.media ? [listing.media] : [];
   const active = activeMedia ?? listing.media;
   const rows = detailRows(listing.details);
   const amenities: string[] = Array.isArray(listing.amenities) ? listing.amenities : [];
+  const d = listing.details ?? {};
+  const highlights: string[] = [
+    listing.furnishing ? String(listing.furnishing) : '',
+    listing.bachelorAllowed === 'yes' ? 'Bachelors welcome' : listing.bachelorAllowed === 'no' ? 'Family home' : '',
+    d.floor != null && d.totalFloors != null ? `Floor ${d.floor}/${d.totalFloors}` : d.floor != null ? `Floor ${d.floor}` : '',
+    d.facing ? `${d.facing}-facing` : '',
+    d.propertyType ? String(d.propertyType) : '',
+    d.availableFrom ? `Available ${d.availableFrom}` : ''
+  ].filter(Boolean);
   const spottedDays = listing.spottedAt ? Math.floor((Date.now() - new Date(listing.spottedAt).getTime()) / 86400000) : null;
   const freshText = spottedDays == null ? 'Recently spotted' : spottedDays <= 0 ? 'Spotted today' : spottedDays === 1 ? 'Spotted yesterday' : spottedDays < 30 ? `Spotted ${spottedDays} days ago` : `Spotted ${Math.floor(spottedDays / 30)}mo ago`;
 
   return (
-    <main className="max-w-5xl mx-auto px-5 pt-6 pb-12">
+    <main className="max-w-5xl mx-auto px-5 pt-5 pb-28 lg:pb-12">
       <div className="flex items-center justify-between gap-3">
-        <Link href="/discover" className="text-sm font-semibold text-accent">← All discoveries</Link>
-        <ShortlistButton id={id} showLabel className="btn btn-sm" />
+        <nav className="text-xs text-slate flex items-center gap-1.5 min-w-0" aria-label="Breadcrumb">
+          <Link href="/discover" className="hover:text-ink">Discover</Link>
+          {area && <><ChevronRightIcon className="w-3.5 h-3.5 shrink-0" /><Link href={`/areas/${area.slug}`} className="hover:text-ink truncate">{area.name}</Link></>}
+          <ChevronRightIcon className="w-3.5 h-3.5 shrink-0" /><span className="text-ink font-medium truncate">{listing.bhk} BHK</span>
+        </nav>
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={share} className="btn btn-sm" aria-label="Share">{shared ? 'Copied!' : 'Share'}</button>
+          <ShortlistButton id={id} showLabel className="btn btn-sm" />
+        </div>
       </div>
 
-      <div className="grid lg:grid-cols-[1.35fr_.65fr] gap-6 mt-5 items-start">
+      <div className="grid lg:grid-cols-[1.35fr_.65fr] gap-6 mt-4 items-start">
         <div className="animate-fade-up space-y-6">
           <div className="sticker overflow-hidden">
-            <div className="relative aspect-[16/10] bg-canvas flex items-center justify-center overflow-hidden">
+            <button type="button" onClick={() => setLightbox(Math.max(0, gallery.indexOf(active)))} className="relative aspect-[16/10] w-full bg-canvas flex items-center justify-center overflow-hidden group" aria-label="Open photo">
               <Media url={active} emoji={listing.photo || '🏠'} alt={`${listing.bhk} BHK in ${listing.landmark}`} className="w-full h-full object-cover" emojiClassName="text-8xl" />
-            </div>
+              {gallery.length > 1 && <span className="absolute bottom-3 right-3 text-xs font-semibold bg-ink/75 text-white px-2.5 py-1 rounded-full">📷 {gallery.length} photos</span>}
+            </button>
             {gallery.length > 1 && (
               <div className="flex gap-2 p-3 overflow-x-auto border-t border-line">
                 {gallery.map((u) => (
@@ -110,7 +143,12 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
               <Link href="/trust-and-safety" title="How the trust score works" className="badge badge-accent hover:brightness-95"><ShieldCheckIcon className="w-3.5 h-3.5" /> Trust {listing.trustScore}/100</Link>
             </div>
             <h1 className="text-2xl sm:text-3xl">{listing.bhk} BHK near {listing.landmark}</h1>
-            <p className="text-slate mt-2 leading-relaxed">{listing.note || 'A fresh rental opportunity discovered on the street in your neighbourhood. Verify the details and connect with the owner directly.'}</p>
+            <p className="text-slate mt-2 leading-relaxed">{listing.note || 'Spotted on the street by a scout in your neighbourhood — a fresh, real rental you won’t find on the usual portals. Check the details below and connect with the owner directly.'}</p>
+            {highlights.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {highlights.map((h) => <span key={h} className="badge bg-canvas border border-line capitalize">{h}</span>)}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -144,11 +182,25 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
             </div>
           )}
 
-          <div className="panel p-4 bg-canvas border-dashed">
-            <p className="section-label">Location protected</p>
-            <p className="text-sm mt-1.5 flex items-center gap-1.5 font-medium"><MapPinIcon className="w-4 h-4 shrink-0 text-slate" /> Approx. area: {listing.landmark}</p>
-            <p className="text-xs text-slate mt-1">The exact address and pin appear only after you unlock the owner contact.</p>
+          <div className="panel p-4">
+            <p className="section-label">Location {unlocked ? '' : 'protected'}</p>
+            <p className="text-sm mt-1.5 flex items-center gap-1.5 font-medium"><MapPinIcon className="w-4 h-4 shrink-0 text-slate" /> {unlocked?.location?.address || `Approx. area: ${listing.landmark}`}</p>
+            {!unlocked && <p className="text-xs text-slate mt-1 mb-3">The exact address and pin appear only after you unlock the owner contact.</p>}
+            {typeof listing.approxLat === 'number' && typeof listing.approxLng === 'number' && !unlocked && (
+              <div className="mt-2"><ApproxMap lat={listing.approxLat} lng={listing.approxLng} /></div>
+            )}
           </div>
+
+          {area && (
+            <Link href={`/areas/${area.slug}`} className="panel panel-hover p-4 flex items-center gap-4 group">
+              <div className="min-w-0 flex-1">
+                <p className="section-label mb-1">About the area</p>
+                <p className="font-semibold flex items-center gap-1.5">{area.name} <span className="inline-flex items-center gap-0.5 text-xs text-slate font-normal"><StarIcon className="w-3 h-3 text-yellow" /> {area.rating.toFixed(1)}</span></p>
+                <p className="text-xs text-slate mt-0.5 line-clamp-2">{area.tagline}</p>
+              </div>
+              <span className="text-sm font-semibold text-accent shrink-0 flex items-center gap-1">Guide <ChevronRightIcon className="w-4 h-4" /></span>
+            </Link>
+          )}
 
           <div className="flex items-start gap-2.5 text-sm text-slate">
             <ShieldCheckIcon className="w-5 h-5 shrink-0 text-green mt-0.5" />
@@ -156,7 +208,7 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
           </div>
         </div>
 
-        <aside className="lg:sticky lg:top-20 space-y-3">
+        <aside id="unlock" className="lg:sticky lg:top-20 space-y-3 scroll-mt-20">
           <div className="sticker p-5">
             <p className="font-mono text-3xl font-bold">₹{listing.rent.toLocaleString('en-IN')}<span className="text-sm font-normal text-slate"> / month</span></p>
             <div className="divide-y divide-line mt-4 border-t border-line">
@@ -267,6 +319,56 @@ export default function ListingDetail({ id, initial }: { id: string; initial: an
           <p className="text-center text-[11px] text-slate">{freshText} · <a href={`mailto:hello@spotted.app?subject=Report listing ${id}`} className="underline hover:text-ink">report a problem</a></p>
         </aside>
       </div>
+
+      {similar.length > 0 && (
+        <section className="mt-12">
+          <div className="flex items-end justify-between mb-4">
+            <h2 className="text-xl sm:text-2xl">More homes {area ? `in ${area.name}` : 'like this'}</h2>
+            <Link href={area ? `/discover?query=${encodeURIComponent(area.name)}` : '/discover'} className="text-sm font-semibold text-accent shrink-0">View all →</Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {similar.map((l) => (
+              <Link key={l.id} href={`/listing/${l.id}`} className="panel panel-hover overflow-hidden group">
+                <div className="relative aspect-[16/11] bg-canvas overflow-hidden">
+                  <Media url={l.media} emoji="🏠" alt={`${l.bhk} BHK in ${l.landmark}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" emojiClassName="flex items-center justify-center w-full h-full text-4xl" />
+                  <span className={`badge absolute top-2 right-2 ${l.status === 'verified' ? 'badge-green' : 'badge-yellow'}`}>{l.status === 'verified' ? 'Verified' : 'Community'}</span>
+                </div>
+                <div className="p-3">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="font-semibold">{l.bhk} BHK</span>
+                    <span className="font-mono font-bold">₹{Number(l.rent).toLocaleString('en-IN')}</span>
+                  </div>
+                  <p className="text-xs text-slate mt-1 flex items-center gap-1 truncate"><MapPinIcon className="w-3.5 h-3.5 shrink-0" /> {l.landmark}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Sticky mobile unlock bar */}
+      {!unlocked && (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-paper/95 backdrop-blur border-t border-line px-4 py-3 flex items-center justify-between gap-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div>
+            <p className="font-mono text-lg font-bold leading-none">₹{listing.rent.toLocaleString('en-IN')}<span className="text-xs font-normal text-slate">/mo</span></p>
+            <p className="text-[11px] text-slate mt-0.5">{hasActivePass(entitlement) ? 'Unlimited pass active' : entitlement.credits > 0 ? `${entitlement.credits} credits left` : 'Unlock owner contact'}</p>
+          </div>
+          <a href="#unlock" className="btn btn-primary shrink-0"><UnlockIcon className="w-4 h-4" /> Unlock</a>
+        </div>
+      )}
+
+      {/* Fullscreen gallery lightbox */}
+      {lightbox !== null && gallery.length > 0 && (
+        <div className="fixed inset-0 z-[60] bg-ink/95 flex items-center justify-center" onClick={() => setLightbox(null)}>
+          <button aria-label="Close" className="absolute top-4 right-4 text-white/80 hover:text-white p-2" onClick={() => setLightbox(null)}><XIcon className="w-7 h-7" /></button>
+          <button aria-label="Previous" className="absolute left-3 sm:left-6 text-white/70 hover:text-white text-4xl px-2" onClick={(e) => { e.stopPropagation(); setLightbox((i) => (i === null ? 0 : (i - 1 + gallery.length) % gallery.length)); }}>‹</button>
+          <div className="max-w-4xl max-h-[85vh] w-full px-4" onClick={(e) => e.stopPropagation()}>
+            <Media url={gallery[lightbox]} className="w-full max-h-[85vh] object-contain" emojiClassName="flex items-center justify-center w-full h-64 text-6xl" />
+            <p className="text-center text-white/60 text-xs mt-3">{lightbox + 1} / {gallery.length}</p>
+          </div>
+          <button aria-label="Next" className="absolute right-3 sm:right-6 text-white/70 hover:text-white text-4xl px-2" onClick={(e) => { e.stopPropagation(); setLightbox((i) => (i === null ? 0 : (i + 1) % gallery.length)); }}>›</button>
+        </div>
+      )}
     </main>
   );
 }

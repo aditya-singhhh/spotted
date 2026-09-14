@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getPublicListing } from '@/lib/listings';
+import { getPublicListing, getPublicFeed } from '@/lib/listings';
 import { mediaKind } from '@/lib/reward';
+import { AREAS } from '@/content/areas';
+import { listingInArea } from '@/lib/areaStats';
 import ListingDetail from './ListingDetail';
 
 // ISR: cache the rendered listing at the edge and revalidate periodically so
@@ -21,5 +23,19 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 export default async function ListingDetailPage({ params }: { params: { id: string } }) {
   const listing = await getPublicListing(params.id).catch(() => null);
   if (!listing) notFound();
-  return <ListingDetail id={params.id} initial={listing} />;
+
+  // Similar listings + the area guide this listing belongs to (computed on the
+  // server so the client gets them instantly). Cheap: reuses the cached feed.
+  const feed = await getPublicFeed(200).catch(() => [] as any[]);
+  const area = AREAS.find((a) => listingInArea(listing, a)) ?? null;
+  const similar = feed
+    .filter((l) => l.id !== listing.id)
+    .map((l) => ({ l, score: (area && listingInArea(l, area) ? 2 : 0) + (String(l.bhk) === String(listing.bhk) ? 1 : 0) }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 4)
+    .map((x) => x.l);
+
+  const areaCard = area ? { slug: area.slug, name: area.name, rating: area.rating.overall, tagline: area.tagline } : null;
+  return <ListingDetail id={params.id} initial={listing} similar={similar} area={areaCard} />;
 }

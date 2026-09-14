@@ -6,12 +6,26 @@ import { useEffect, useState } from 'react';
 import CardMedia from '@/components/CardMedia';
 import ShortlistButton from '@/components/ShortlistButton';
 import Reveal from '@/components/Reveal';
-import { CheckIcon, SearchIcon, MapPinIcon, ShieldCheckIcon, SparkleIcon, TrendingUpIcon } from '@/components/icons';
+import { CheckIcon, SearchIcon, MapPinIcon, ShieldCheckIcon, SparkleIcon, TrendingUpIcon, UnlockIcon } from '@/components/icons';
 import { readCache, writeCache } from '@/lib/clientCache';
 import { AREAS } from '@/content/areas';
 import Stars from '@/components/Stars';
-import { RiderScoutArt } from '@/components/BrandArt';
+import { RiderScoutArt, NeighbourhoodMapArt } from '@/components/BrandArt';
 import type { ComponentType } from 'react';
+
+const POPULAR_SEARCHES: { label: string; params: Record<string, string> }[] = [
+  { label: '1 BHK in HSR', params: { query: 'HSR', bhk: '1' } },
+  { label: '2 BHK in Koramangala', params: { query: 'Koramangala', bhk: '2' } },
+  { label: 'Under ₹20k', params: { budget: '20000' } },
+  { label: 'Bachelor-friendly', params: { bachelor: 'yes' } },
+  { label: 'Whitefield', params: { query: 'Whitefield' } }
+];
+
+const WHY = [
+  { Icon: SparkleIcon, title: 'Spotted on the street', body: 'Real TO-LET boards photographed by local scouts — often the day a home goes vacant. Fresh supply the big portals miss.' },
+  { Icon: ShieldCheckIcon, title: 'Verified before you see it', body: 'Every listing is checked by our team and carries a trust score, so you skip the fakes and dead numbers.' },
+  { Icon: UnlockIcon, title: 'No brokers, ever', body: 'Pay a small one-time fee to unlock the owner’s contact and exact location. No brokerage, no subscription.' }
+];
 
 const STEPS: { Icon: ComponentType<{ className?: string }>; title: string; body: string }[] = [
   { Icon: SearchIcon, title: 'Search your area', body: 'Browse fresh, real rental boards spotted near you — filtered by size and budget.' },
@@ -69,6 +83,13 @@ export default function Home() {
             <button className="btn btn-primary px-6"><SearchIcon className="w-4 h-4" /> Search</button>
           </form>
 
+          <div className="flex flex-wrap justify-center items-center gap-2 mt-4 animate-fade-up">
+            <span className="text-xs text-slate">Popular:</span>
+            {POPULAR_SEARCHES.map((s) => (
+              <Link key={s.label} href={`/discover?${new URLSearchParams(s.params).toString()}`} className="badge bg-paper border border-line hover:border-accent hover:text-accent transition-colors">{s.label}</Link>
+            ))}
+          </div>
+
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 mt-8 text-sm text-slate animate-fade-up">
             <span className="flex items-center gap-1.5"><ShieldCheckIcon className="w-4 h-4 text-green" /> Owner-verified listings</span>
             <span className="flex items-center gap-1.5"><SparkleIcon className="w-4 h-4 text-accent" /> Fresh every day</span>
@@ -88,6 +109,25 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      <section className="border-y border-line bg-paper">
+        <div className="max-w-5xl mx-auto px-5 py-14 sm:py-16 grid lg:grid-cols-2 gap-10 items-center">
+          <div>
+            <p className="section-label mb-2">Why spotted</p>
+            <h2 className="text-2xl sm:text-3xl">Rentals the portals never see.</h2>
+            <p className="text-slate mt-3">The best homes get taken before they’re ever listed online. We put people on the street to catch them first — then verify every one.</p>
+            <div className="mt-6 space-y-4">
+              {WHY.map(({ Icon, title, body }) => (
+                <div key={title} className="flex gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-accentSoft text-accent flex items-center justify-center shrink-0"><Icon className="w-4 h-4" /></div>
+                  <div><h3 className="font-semibold text-[15px]">{title}</h3><p className="text-sm text-slate mt-0.5 leading-relaxed">{body}</p></div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="order-first lg:order-last"><NeighbourhoodMapArt className="w-full max-w-md mx-auto" /></div>
+        </div>
+      </section>
 
       <section className="max-w-5xl mx-auto px-5 py-14 sm:py-16">
         <div className="flex items-end justify-between mb-6">
