@@ -22,7 +22,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "app.spotted"
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      ["expo-image-picker", { "photosPermission": "spotted uses your photos to attach home and board images.", "cameraPermission": "spotted uses your camera to capture TO-LET boards." }],
+      ["expo-location", { "locationWhenInUsePermission": "spotted uses your location to pin the area you're scouting." }]
+    ],
     "experiments": {
       "typedRoutes": true
     }

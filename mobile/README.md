@@ -21,16 +21,19 @@ npx expo start            # scan the QR code with Expo Go on your Android phone
 > Use `npx expo install <pkg>` (not plain `npm install <pkg>`) when adding native
 > Expo packages so versions match the SDK.
 
-## What's built (Phases 1–2)
+## What's built (Phases 1–3)
 - Tab navigation (Home · Explore · Scout · Profile), brand theme.
 - **Home** — hero + featured listings + scout CTA.
 - **Explore** — live feed from `/api/listings` with search + pull-to-refresh.
-- **Listing detail** — facts + **unlock flow**, **packages/credits/pass** (`/api/plans`,
-  `/api/purchase`), **shortlist** (heart), **report-a-listing**, recently-viewed tracking.
+- **Listing detail** — facts + **unlock flow**, **packages/credits/pass**, **shortlist**,
+  **report-a-listing**, recently-viewed tracking.
+- **Scout** — **native camera + gallery capture** (home + gated board media),
+  location (GPS or area chips), full submit form → Cloudinary (signed) → `/api/scout/submit`.
+- **Scout dashboard** — wallet (available/pending/total/withdrawn) + **withdraw**,
+  KPIs, **notifications**, **assigned requests + fulfil**, submissions.
 - **Login** — email/password (Firebase); phone OTP is Phase 4.
-- **Profile** — account, **recently viewed**, **unlocked contacts**, **shortlist**, sign out.
+- **Profile** — account, recently viewed, unlocked contacts, shortlist, sign out.
 
 ## Next phases
-3. Native camera scout capture + submit + scout dashboard/wallet + assigned requests.
 4. Push notifications (FCM), phone OTP, react-native-maps, deep links, offline, share.
 5. EAS Build → Play Store internal testing.
