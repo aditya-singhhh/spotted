@@ -26,6 +26,16 @@ export default function ScoutSubmitPage() {
       <h1 className="text-3xl sm:text-4xl">Earn from boards you spot.</h1>
       <p className="text-slate text-lg mt-3">See a TO-LET board on your street? Share it in two minutes and earn every time a renter unlocks it — no brokerage, no follow-ups.</p>
 
+      {/* One-glance flow so first-timers get the idea before the form. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-4 text-sm font-medium">
+        <span className="flex items-center gap-1.5"><CameraIcon className="w-4 h-4 text-accent" /> Snap the board</span>
+        <span className="text-slate">→</span>
+        <span className="flex items-center gap-1.5"><ShieldCheckIcon className="w-4 h-4 text-accent" /> We verify</span>
+        <span className="text-slate">→</span>
+        <span className="flex items-center gap-1.5"><WalletIcon className="w-4 h-4 text-accent" /> Earn up to 50%</span>
+        <a href="#how-it-works" className="text-xs text-accent underline ml-1">how it works</a>
+      </div>
+
       {/* The action comes first — returning scouts submit without scrolling past the pitch. */}
       <div className="mt-6">
         <AuthGate>{(user) => (
@@ -38,7 +48,7 @@ export default function ScoutSubmitPage() {
       </div>
 
       {/* Supporting pitch below, for first-time visitors. */}
-      <div className="mt-12 pt-8 border-t border-line">
+      <div id="how-it-works" className="mt-12 pt-8 border-t border-line scroll-mt-20">
         <h2 className="text-xl mb-4">How it works</h2>
         <div className="grid sm:grid-cols-3 gap-3">
           {[
