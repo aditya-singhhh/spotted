@@ -58,7 +58,7 @@ function ScoutForm() {
   async function addMedia(set: (fn: (p: Pick[]) => Pick[]) => void, fromCamera: boolean, max: number) {
     const perm = fromCamera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) { Alert.alert('Permission needed', 'Please allow access to continue.'); return; }
-    const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.7, allowsMultipleSelection: !fromCamera };
+    const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ['images', 'videos'], quality: 0.7, allowsMultipleSelection: !fromCamera };
     const r = fromCamera ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
     if (r.canceled) return;
     const picks: Pick[] = r.assets.map((a) => ({ uri: a.uri, type: a.type === 'video' ? 'video' : 'image', mimeType: a.mimeType }));
