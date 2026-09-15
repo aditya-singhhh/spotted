@@ -26,36 +26,41 @@ export default function ScoutSubmitPage() {
       <h1 className="text-3xl sm:text-4xl">Earn from boards you spot.</h1>
       <p className="text-slate text-lg mt-3">See a TO-LET board on your street? Share it in two minutes and earn every time a renter unlocks it — no brokerage, no follow-ups.</p>
 
-      <div className="grid sm:grid-cols-3 gap-3 mt-7">
-        {[
-          { Icon: CameraIcon, n: '01', t: 'Submit', b: 'Snap the board — a photo or quick video.' },
-          { Icon: ShieldCheckIcon, n: '02', t: 'We verify', b: 'Our team checks it, usually within a day.' },
-          { Icon: WalletIcon, n: '03', t: 'You earn', b: 'Up to 50% of every unlock, in your wallet.' }
-        ].map(({ Icon, n, t, b }) => (
-          <div key={n} className="panel p-4">
-            <div className="w-11 h-11 rounded-xl bg-accentSoft text-accent flex items-center justify-center mb-3"><Icon className="w-5 h-5" /></div>
-            <div className="flex items-center gap-2"><span className="font-mono text-xs text-slate">{n}</span><h3 className="font-semibold">{t}</h3></div>
-            <p className="text-sm text-slate mt-1 leading-snug">{b}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="rounded-2xl bg-ink text-paper p-5 mt-4 flex items-start gap-4">
-        <div className="w-10 h-10 rounded-xl bg-accent/20 text-accent flex items-center justify-center shrink-0 mt-0.5"><PlayIcon className="w-4 h-4" /></div>
-        <div>
-          <p className="section-label !text-accent">Higher quality, higher pay</p>
-          <p className="text-sm text-paper/80 mt-1.5 max-w-lg">A short video and a confirmed owner lift your trust score — and your pay. A verified listing with 10 unlocks can earn <b className="text-paper">₹150+</b>. <a href="/trust-and-safety" className="underline">How trust works →</a></p>
-        </div>
-      </div>
-
-      <div className="mt-9 pt-2 border-t border-line">
+      {/* The action comes first — returning scouts submit without scrolling past the pitch. */}
+      <div className="mt-6">
         <AuthGate>{(user) => (
           <>
-            <h2 className="text-xl mt-6 mb-1">Submit a discovery</h2>
+            <h2 className="text-xl mb-1">Submit a discovery</h2>
             <p className="text-sm text-slate mb-5">Add the board details below — it takes under two minutes.</p>
             <ScoutForm user={user} />
           </>
         )}</AuthGate>
+      </div>
+
+      {/* Supporting pitch below, for first-time visitors. */}
+      <div className="mt-12 pt-8 border-t border-line">
+        <h2 className="text-xl mb-4">How it works</h2>
+        <div className="grid sm:grid-cols-3 gap-3">
+          {[
+            { Icon: CameraIcon, n: '01', t: 'Submit', b: 'Snap the board — a photo or quick video.' },
+            { Icon: ShieldCheckIcon, n: '02', t: 'We verify', b: 'Our team checks it, usually within a day.' },
+            { Icon: WalletIcon, n: '03', t: 'You earn', b: 'Up to 50% of every unlock, in your wallet.' }
+          ].map(({ Icon, n, t, b }) => (
+            <div key={n} className="panel p-4">
+              <div className="w-11 h-11 rounded-xl bg-accentSoft text-accent flex items-center justify-center mb-3"><Icon className="w-5 h-5" /></div>
+              <div className="flex items-center gap-2"><span className="font-mono text-xs text-slate">{n}</span><h3 className="font-semibold">{t}</h3></div>
+              <p className="text-sm text-slate mt-1 leading-snug">{b}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-2xl bg-ink text-paper p-5 mt-4 flex items-start gap-4">
+          <div className="w-10 h-10 rounded-xl bg-accent/20 text-accent flex items-center justify-center shrink-0 mt-0.5"><PlayIcon className="w-4 h-4" /></div>
+          <div>
+            <p className="section-label !text-accent">Higher quality, higher pay</p>
+            <p className="text-sm text-paper/80 mt-1.5 max-w-lg">A short video and a confirmed owner lift your trust score — and your pay. A verified listing with 10 unlocks can earn <b className="text-paper">₹150+</b>. <a href="/trust-and-safety" className="underline">How trust works →</a></p>
+          </div>
+        </div>
       </div>
     </main>
   );
