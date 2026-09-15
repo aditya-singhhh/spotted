@@ -339,7 +339,7 @@ function AdminBoard({ user }: { user: User }) {
                   </td>
                   <td className="p-2 font-mono text-xs">{l.scoutName ?? l.scoutId?.slice(0, 8)}</td>
                   <td className="p-2 font-mono">₹{l.rent.toLocaleString('en-IN')}</td>
-                  <td className="p-2">{l.status}</td>
+                  <td className="p-2">{l.status}{l.reportCount ? <span className="badge badge-red ml-1" title={`${l.reportCount} renter report(s)`}>⚠ {l.reportCount}</span> : null}</td>
                   <td className="p-2 font-mono">{l.trustScore}</td>
                   <td className="p-2 text-center">{l.unlocks}</td>
                   <td className="p-2 whitespace-nowrap">

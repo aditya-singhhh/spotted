@@ -37,6 +37,9 @@ export default function ListingDetail({ id, initial, similar = [], area = null }
   const [activeMedia, setActiveMedia] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [shared, setShared] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportDone, setReportDone] = useState(false);
+  const [reportBusy, setReportBusy] = useState(false);
 
   useEffect(() => {
     fetch('/api/plans').then((r) => r.json()).then((d) => { setUnlockPrice(d.unlockPrice || 29); setPlans(Array.isArray(d.plans) ? d.plans : []); }).catch(() => {});
@@ -78,6 +81,15 @@ export default function ListingDetail({ id, initial, similar = [], area = null }
       const data = await res.json();
       if (res.ok) setUnlocked(data); else alert(data.error ?? 'Something went wrong');
     } catch { alert('Could not unlock this listing. Please try again.'); } finally { setUnlocking(false); }
+  }
+
+  async function reportListing(reason: string) {
+    setReportBusy(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/listing-report', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ rentalOpportunityId: id, reason }) });
+      if (res.ok) { setReportDone(true); setReportOpen(false); }
+    } catch { /* ignore */ } finally { setReportBusy(false); }
   }
 
   async function share() {
@@ -312,6 +324,23 @@ export default function ListingDetail({ id, initial, similar = [], area = null }
                       </div>
                     </div>
                   )}
+                  <div className="mt-4 pt-3 border-t border-green/20">
+                    {reportDone ? (
+                      <p className="text-xs text-slate flex items-center gap-1.5"><CheckIcon className="w-3.5 h-3.5 text-green shrink-0" /> Thanks — we’ll review this listing.</p>
+                    ) : !reportOpen ? (
+                      <button type="button" onClick={() => setReportOpen(true)} className="text-xs font-semibold text-slate underline hover:text-ink">Something wrong? Report this listing</button>
+                    ) : (
+                      <div>
+                        <p className="text-xs font-semibold mb-2">What went wrong?</p>
+                        <div className="grid gap-1.5">
+                          {([['rented', 'Already rented'], ['unreachable', 'Couldn’t reach the owner'], ['wrong_info', 'Details were wrong'], ['other', 'Something else']] as [string, string][]).map(([r, label]) => (
+                            <button key={r} type="button" disabled={reportBusy} onClick={() => reportListing(r)} className="text-left text-xs rounded-lg border border-line bg-paper px-3 py-2 hover:border-accent disabled:opacity-60">{label}</button>
+                          ))}
+                        </div>
+                        <button type="button" onClick={() => setReportOpen(false)} className="text-[11px] text-slate mt-2 underline">Cancel</button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
