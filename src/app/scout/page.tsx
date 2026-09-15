@@ -49,9 +49,13 @@ export default function ScoutSubmitPage() {
       </div>
 
       <div className="mt-9 pt-2 border-t border-line">
-        <h2 className="text-xl mt-6 mb-1">Submit a discovery</h2>
-        <p className="text-sm text-slate mb-5">Sign in to submit — it takes under two minutes.</p>
-        <AuthGate>{(user) => <ScoutForm user={user} />}</AuthGate>
+        <AuthGate>{(user) => (
+          <>
+            <h2 className="text-xl mt-6 mb-1">Submit a discovery</h2>
+            <p className="text-sm text-slate mb-5">Add the board details below — it takes under two minutes.</p>
+            <ScoutForm user={user} />
+          </>
+        )}</AuthGate>
       </div>
     </main>
   );
@@ -79,11 +83,19 @@ function MediaPicker({ items, setItems, max }: { items: MediaItem[]; setItems: D
         </div>
       ))}
       {items.length < max && (
-        <label className="aspect-square rounded-xl border-2 border-dashed border-line bg-canvas flex flex-col items-center justify-center text-center cursor-pointer hover:border-accent hover:bg-accentSoft transition-colors">
-          <PlusIcon className="w-6 h-6" />
-          <span className="text-[10px] font-bold mt-1">Add</span>
-          <input type="file" accept="image/*,video/*" multiple className="hidden" onChange={onFiles} />
-        </label>
+        <>
+          <label className="aspect-square rounded-xl border-2 border-dashed border-line bg-canvas flex flex-col items-center justify-center text-center cursor-pointer hover:border-accent hover:bg-accentSoft transition-colors">
+            <CameraIcon className="w-6 h-6" />
+            <span className="text-[10px] font-bold mt-1">Camera</span>
+            {/* capture opens the device camera directly for a fresh photo/video */}
+            <input type="file" accept="image/*,video/*" capture="environment" className="hidden" onChange={onFiles} />
+          </label>
+          <label className="aspect-square rounded-xl border-2 border-dashed border-line bg-canvas flex flex-col items-center justify-center text-center cursor-pointer hover:border-accent hover:bg-accentSoft transition-colors">
+            <PlusIcon className="w-6 h-6" />
+            <span className="text-[10px] font-bold mt-1">Gallery</span>
+            <input type="file" accept="image/*,video/*" multiple className="hidden" onChange={onFiles} />
+          </label>
+        </>
       )}
     </div>
   );
