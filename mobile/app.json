@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "spotted",
+    "slug": "spotted",
+    "scheme": "spotted",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#FFFFFF",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "package": "app.spotted",
+      "adaptiveIcon": {
+        "backgroundColor": "#111827"
+      }
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.spotted"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
