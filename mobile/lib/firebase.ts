@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { initializeAuth, getAuth, getReactNativePersistence, type Auth } from 'firebase/auth';
+import { initializeAuth, getAuth, type Auth, type Persistence } from 'firebase/auth';
+import * as firebaseAuth from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const cfg = {
@@ -10,6 +11,10 @@ const cfg = {
 };
 
 const app = getApps().length ? getApp() : initializeApp(cfg);
+
+// getReactNativePersistence lives in Firebase's react-native build (which Metro
+// resolves) but isn't in the default TS types — cast to satisfy the checker.
+const getReactNativePersistence = (firebaseAuth as any).getReactNativePersistence as (storage: unknown) => Persistence;
 
 // initializeAuth throws if called twice (Fast Refresh) — fall back to getAuth.
 let _auth: Auth;
